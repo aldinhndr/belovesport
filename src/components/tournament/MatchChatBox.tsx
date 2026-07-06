@@ -42,8 +42,8 @@ export default function MatchChatBox({ matchId, currentSenderId, currentSenderNa
             const res = await fetch('/api/tournament/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    matchId, 
+                body: JSON.stringify({
+                    matchId,
                     message: newMessage.trim(),
                     senderId: currentSenderId,     // Sesuai field database MatchChat
                     senderName: currentSenderName   // Sesuai field database MatchChat
@@ -56,7 +56,7 @@ export default function MatchChatBox({ matchId, currentSenderId, currentSenderNa
             }
         } catch (err) {
             console.error('Gagal mengirim pesan chat:', err);
-        } finaly {
+        } finnaly {
             setIsSending(false);
         }
     };
@@ -94,9 +94,8 @@ export default function MatchChatBox({ matchId, currentSenderId, currentSenderNa
                                         <User size={10} /> {chat.senderName}
                                     </span>
                                 )}
-                                <div className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-xs font-medium shadow-sm leading-relaxed ${
-                                    isMe ? 'bg-gradient-brand text-white rounded-tr-none' : 'bg-white border border-brand-border text-brand-dark rounded-tl-none'
-                                }`}>
+                                <div className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-xs font-medium shadow-sm leading-relaxed ${isMe ? 'bg-gradient-brand text-white rounded-tr-none' : 'bg-white border border-brand-border text-brand-dark rounded-tl-none'
+                                    }`}>
                                     <p className="break-words whitespace-pre-wrap select-text">{chat.message}</p>
                                     <span className={`text-[8px] font-mono mt-1 block text-right ${isMe ? 'text-white/70' : 'text-brand-muted'}`}>
                                         {new Date(chat.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
