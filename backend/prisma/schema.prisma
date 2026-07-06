@@ -1,0 +1,155 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ── 1. TABEL PENDAFTARAN TURNAMEN ──
+model Registration {
+  id                String           @id @default(uuid())
+  teamName          String           @map("team_name")
+  leaderName        String           @map("leader_name")
+  email             String
+  whatsappNumber    String           @map("whatsapp_number")
+  efootballId       String           @map("efootball_id")
+  domisili          String
+  device            String
+  instagramHandle   String           @map("instagram_handle")
+  paymentMethod     String           @map("payment_method")
+  paymentProofUrl   String           @db.Text @map("payment_proof_url")
+  profilePictureUrl String?  @db.Text @map("profile_picture_url")
+  status            RegistrationStatus @default(PENDING)
+  rejectionReason   String?          @db.Text @map("rejection_reason")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  vouchers          Voucher[]
+  homeMatches       Match[]          @relation("HomeTeam")
+  awayMatches       Match[]          @relation("AwayTeam")
+  wonMatches        Match[]          @relation("WinnerTeam")
+
+  participantId String?      @map("participant_id")
+  participant   Participant? @relation(fields: [participantId], references: [id])
+
+  @@map("registrations")
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ── 2. TABEL PELACAKAN VOUCHER STATIS ──
+model Voucher {
+  id             BigInt       @id @default(autoincrement())
+  registrationId String       @map("registration_id")
+  voucherCode    String       @default("BLS50K") @map("voucher_code")
+  isUsed         Boolean      @default(false) @map("is_used")
+  usedAt         DateTime?    @map("used_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  // Relasi balik ke Registrasi
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@map("vouchers")
+}
+
+// ── 3. TABEL ENGINE BRACKET & JADWAL MATCH ──
+model Match {
+  id                  String      @id @default(uuid())
+  stage               MatchStage  @default(GROUP)     
+  groupName           String?     @map("group_name")   
+  roundNumber         Int         @map("round_number") 
+  matchNumber         Int         @map("match_number") 
+  
+  homeTeamId          String?     @map("home_team_id")
+  awayTeamId          String?     @map("away_team_id")
+  
+  // Pemisahan Skor untuk Mendukung Sistem 2 Leg
+  homeScoreLeg1       Int?        @map("home_score_leg1")
+  awayScoreLeg1       Int?        @map("away_score_leg1")
+  homeScoreLeg2       Int?        @map("home_score_leg2") 
+  awayScoreLeg2       Int?        @map("away_score_leg2") 
+  
+  winnerId            String?     @map("winner_id")
+  matchStatus         MatchStatus @default(SCHEDULED) @map("match_status")
+  scheduledTime       DateTime    @map("scheduled_time")
+  screenshotResultUrl String?     @db.Text @map("screenshot_result_url") 
+  reportedById        String?     @map("reported_by_id")  
+  createdAt           DateTime    @default(now()) @map("created_at")
+
+  // Relasi Pemetaan Tim yang Bertanding
+  homeTeam            Registration? @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: SetNull)
+  awayTeam            Registration? @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: SetNull)
+  winner              Registration? @relation("WinnerTeam", fields: [winnerId], references: [id], onDelete: SetNull)
+  
+  // Relasi ke Obrolan Pertandingan
+  chats               MatchChat[]
+
+  @@map("matches")
+}
+
+enum MatchStatus {
+  SCHEDULED
+  PLAYING
+  WAITING_VERIFICATION
+  COMPLETED
+}
+
+enum MatchStage {
+  GROUP         // Fase Penyisihan 1 Match
+  KNOCKOUT_32   // Babak 32 Besar (2 Leg)
+  KNOCKOUT_16   // Babak 16 Besar (2 Leg)
+  QUARTER_FINAL // Perempat Final (2 Leg)
+  SEMI_FINAL    // Semi Final (2 Leg)
+  FINAL         // Grand Final (1 Leg Murni)
+}
+
+model Participant {
+  id            String   @id @default(uuid())
+  username      String   @unique
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  isVerified    Boolean  @default(false) @map("is_verified")
+  profilePictureUrl String?  @db.Text @map("profile_picture_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  registrations Registration[]
+
+  @@map("participants")
+}
+
+// ── 4. TABEL ROOM CHAT PERTANDINGAN ──
+model MatchChat {
+  id            String       @id @default(uuid())
+  matchId       String       @map("match_id")
+  match         Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  senderId      String       @map("sender_id")       
+  senderName    String       @map("sender_name")     
+  message       String       @db.Text
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@map("match_chats")
+}
+
+model OtpCode {
+  id         String     @id @default(uuid())
+  identifier String     // email tujuan
+  code       String
+  purpose    OtpPurpose
+  expiresAt  DateTime   @map("expires_at")
+  isUsed     Boolean    @default(false) @map("is_used")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  @@map("otp_codes")
+  @@index([identifier, purpose])
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  PASSWORD_RESET
+}

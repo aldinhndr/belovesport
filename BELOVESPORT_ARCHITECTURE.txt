@@ -1,0 +1,58 @@
+BELOVEsPORT Landing Page - Next.js 15 Architecture
+==================================================
+
+📁 PROJECT ROOT
+├── 📁 app/
+│   ├── layout.tsx                    # Root layout with fonts, providers
+│   ├── page.tsx                      # Main landing page
+│   ├── globals.css                   # Tailwind + custom CSS variables
+│   └── 📁 api/
+│       └── sponsor-inquiry/          # B2B sponsorship contact form
+│
+├── 📁 components/
+│   ├── 📁 sections/
+│   │   ├── HeroSection.tsx          # Dynamic hero with particle effects
+│   │   ├── StatsBar.tsx             # Animated counter stats (sticky/floating)
+│   │   ├── EcosystemGrid.tsx        # 4-card value proposition grid
+│   │   ├── TournamentFlow.tsx       # Vertical stepper roadmap
+│   │   ├── CompetitiveIntegrity.tsx # Anti-cheat & trust section
+│   │   ├── SponsorShowcase.tsx      # B2B sponsorship section
+│   │   ├── FAQSection.tsx           # Accordion-based FAQ
+│   │   ├── FinalCTASection.tsx      # Urgency-driven conversion CTA
+│   │   └── Footer.tsx               # Corporate footer with links
+│   │
+│   ├── 📁 ui/ (Shadcn UI base components)
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── accordion.tsx
+│   │   ├── dialog.tsx
+│   │   └── input.tsx
+│   │
+│   ├── 📁 shared/
+│   │   ├── NavBar.tsx              # Optional sticky nav with logo
+│   │   ├── ParticleBackground.tsx  # Reusable particle/mesh effect
+│   │   ├── AnimatedCounter.tsx     # Animated number counter
+│   │   └── ScrollReveal.tsx        # Framer Motion scroll trigger wrapper
+│   │
+│   └── 📁 forms/
+│       ├── RegistrationForm.tsx    # Tournament registration (modal)
+│       └── SponsorInquiryForm.tsx  # B2B sponsor contact form
+│
+├── 📁 lib/
+│   ├── cn.ts                       # Tailwind class merge utility
+│   ├── constants.ts                # Brand colors, copy, configuration
+│   └── animations.ts               # Framer Motion animation presets
+│
+├── 📁 public/
+│   ├── 📁 images/
+│   │   ├── logo.svg
+│   │   ├── belovecorp-badge.svg
+│   │   └── trophy.svg
+│   └── 📁 fonts/
+│       └── (Inter, JetBrains Mono from Google Fonts or hosted)
+│
+├── tailwind.config.ts              # Tailwind 4 config with brand colors
+├── tsconfig.json                   # TypeScript configuration
+├── next.config.ts                  # Next.js 15 config
+├── package.json                    # Dependencies
+└── README.md                        # Setup instructions
