@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Mail, Lock, LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -11,7 +11,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
     oauth_missing_code: 'Sesi Google tidak valid. Silakan coba lagi.',
 };
 
-export default function LoginPage() {
+// 1. Pindahkan seluruh isi logika dan UI login lama ke dalam komponen terpisah ini
+function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -67,9 +68,6 @@ export default function LoginPage() {
             setError('Tidak bisa membuka login Google. Coba lagi sebentar lagi.');
             setIsGoogleLoading(false);
         }
-        // On success the browser navigates away to Google, so no further
-        // state update is needed here — isGoogleLoading intentionally stays
-        // true until the redirect happens.
     };
 
     return (
@@ -226,5 +224,18 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+// 2. Komponen utama Default Export yang mengunci Suspense Boundary saat prerendering produksi
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex min-h-screen items-center justify-center bg-brand-bg-light text-brand-dark">
+                <Loader2 size={24} className="animate-spin text-brand-gold" />
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }
