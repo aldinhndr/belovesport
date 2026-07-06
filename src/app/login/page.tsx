@@ -4,14 +4,14 @@ import { useState, useEffect, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Mail, Lock, LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+// 1. Impor createClient langsung dari modul supabase-js untuk inisialisasi dinamis
+import { createClient } from '@supabase/supabase-js';
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
     oauth_failed: 'Login Google gagal diproses. Silakan coba lagi.',
     oauth_missing_code: 'Sesi Google tidak valid. Silakan coba lagi.',
 };
 
-// 1. Pindahkan seluruh isi logika dan UI login lama ke dalam komponen terpisah ini
 function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -55,24 +55,45 @@ function LoginContent() {
         }
     };
 
+    // 2. Pembaruan fungsi klik login Google dengan penanganan ketat runtime browser
     const handleGoogleLogin = async () => {
         setError(null);
         setIsGoogleLoading(true);
-        const { error: oauthError } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
-            },
-        });
-        if (oauthError) {
-            setError('Tidak bisa membuka login Google. Coba lagi sebentar lagi.');
+
+        try {
+            const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+            // Validasi langsung di memori browser
+            if (!url || !anonKey) {
+                setError('Variabel lingkungan Supabase belum termuat di browser. Silakan refresh halaman.');
+                setIsGoogleLoading(false);
+                return;
+            }
+
+            // Inisialisasi klien lokal (on-the-fly) untuk memastikan apikey disuntikkan sempurna
+            const directSupabase = createClient(url, anonKey);
+
+            const { error: oauthError } = await directSupabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                },
+            });
+
+            if (oauthError) {
+                setError('Tidak bisa membuka login Google. Coba lagi sebentar lagi.');
+                setIsGoogleLoading(false);
+            }
+        } catch (err) {
+            console.error('OAuth Initialization Error:', err);
+            setError('Terjadi kesalahan tak terduga saat memuat Google Auth.');
             setIsGoogleLoading(false);
         }
     };
 
     return (
         <div className="min-h-screen bg-brand-bg-light flex items-center justify-center px-4 py-10 relative overflow-hidden text-brand-dark">
-            {/* Ambient background glow — kept soft so it doesn't fight the form for attention */}
             <div
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-brand-primary/[0.07] blur-[150px] rounded-full pointer-events-none"
                 aria-hidden
@@ -99,7 +120,6 @@ function LoginContent() {
                 <div className="bg-brand-bg-surface border border-brand-border rounded-3xl p-8 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-primary via-brand-gold to-brand-bronze" />
 
-                    {/* Error alert — one shared spot for both password and Google errors */}
                     {error && (
                         <div
                             role="alert"
@@ -227,7 +247,6 @@ function LoginContent() {
     );
 }
 
-// 2. Komponen utama Default Export yang mengunci Suspense Boundary saat prerendering produksi
 export default function LoginPage() {
     return (
         <Suspense fallback={
