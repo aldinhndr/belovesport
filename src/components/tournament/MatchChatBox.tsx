@@ -56,7 +56,7 @@ export default function MatchChatBox({ matchId, currentSenderId, currentSenderNa
             }
         } catch (err) {
             console.error('Gagal mengirim pesan chat:', err);
-        } finnaly {
+        } finally {
             setIsSending(false);
         }
     };
