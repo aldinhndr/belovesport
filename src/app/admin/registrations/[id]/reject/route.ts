@@ -4,14 +4,14 @@ import { getAdminSession } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
-  context : { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ success: false, message: 'Unauthorized.' }, { status: 401 });
   }
 
-  const { id } = await context.params;
+  const { id } = await params;
 
   try {
     const body = await request.json();

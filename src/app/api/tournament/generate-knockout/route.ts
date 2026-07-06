@@ -106,18 +106,18 @@ export async function POST(request: Request) {
       const awayTeamId = qualifiedTeams[pair.aGrup]?.rank2; // Runner-up grup lawan
 
       knockoutMatchesToCreate.push({
-        stage: 'ROUND_OF_32',
-        matchNumber: idx + 1,
-        roundNumber: 1,
-        homeTeamId,
-        awayTeamId,
-        matchStatus: 'SCHEDULED',
-        // Mengosongkan skor & relasi bagan selanjutnya agar siap diisi dinamis oleh admin verify
-        homeScoreLeg1: null,
-        awayScoreLeg1: null,
-        homeScoreLeg2: null,
-        awayScoreLeg2: null,
-      });
+      stage: 'KNOCKOUT_32',
+      matchNumber: idx + 1,
+      roundNumber: 1,
+      homeTeamId,
+      awayTeamId,
+      matchStatus: 'SCHEDULED',
+      scheduledTime: new Date(), // atau tanggal/jadwal yang sesuai
+      homeScoreLeg1: null,
+      awayScoreLeg1: null,
+      homeScoreLeg2: null,
+      awayScoreLeg2: null,
+    });
     });
 
     // 5. Eksekusi Bulk Insert ke database

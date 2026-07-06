@@ -4,10 +4,12 @@
   "private": true,
   "description": "BELOVESPORT - Indonesia's Premier eFootball Tournament Platform",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev",  
+    "postinstall": "prisma generate --schema=backend/prisma/schema.prisma",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
+
   },
   "dependencies": {
     "@g-loot/react-tournament-brackets": "^1.0.31-rc",
