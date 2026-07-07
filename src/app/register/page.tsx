@@ -20,7 +20,6 @@ const STEPS: { id: Step; label: string }[] = [
 
 const MAX_FILE_SIZE_MB = 5
 const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-const [showLockAlert, setShowLockAlert] = useState(false);
 
 function validateImageFile(file: File): string | null {
     if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -163,6 +162,7 @@ export default function RegisterPage() {
     const [currentStep, setCurrentStep] = useState<Step>('DETAILS')
     const [loading, setLoading] = useState(false)
     const [serverError, setServerError] = useState<string | null>(null)
+    const [showLockAlert, setShowLockAlert] = useState(false);
 
     // ── Data CRM & Profil eFootball ──
     const [fullName, setFullName] = useState('')
