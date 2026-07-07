@@ -395,14 +395,6 @@ function HeroSection({ onSignup }: { onSignup: () => void }) {
           </span>
         </h1>
 
-        <p className="mx-auto mt-4 max-w-xl text-base font-semibold leading-relaxed text-white/65 sm:text-lg">
-          BELOVESPORT hadirkan turnamen eFootball Mobile resmi by BELOVECORP
-          INDONESIA. Format Grup lalu Knockout, klasemen otomatis, dan
-          keamanan anti-kecurangan kelas nasional — hanya{' '}
-          <span className="font-black text-brand-gold">Rp 25.000</span> per tim untuk
-          memperebutkan tahta.
-        </p>
-
         {/* Bar info "tiket resmi" — pengganti 3 pill lepas, kesannya lebih satu-kesatuan & premium */}
         <div className="mx-auto mt-7 flex max-w-lg divide-x divide-brand-gold/15 overflow-hidden rounded-2xl border border-brand-gold/25 bg-[#0f0710]/70 backdrop-blur-sm">
           <div className="flex flex-1 flex-col items-center gap-1 px-3 py-3">
