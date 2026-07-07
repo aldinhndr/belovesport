@@ -117,18 +117,18 @@ const USP_FEATURES = [
 ]
 
 const SCHEDULE = [
-  { date: '01–10 Jul', title: 'Pendaftaran & Verifikasi Tim', tag: 'OPEN' },
-  { date: '12–13 Jul', title: 'Technical Meeting & Bracket Draw', tag: 'WAJIB' },
-  { date: '15–20 Jul', title: 'Fase Grup — Kick-off', tag: 'LIVE' },
-  { date: '22–25 Jul', title: 'Babak 8 Besar & Semifinal', tag: 'LIVE' },
-  { date: '27 Jul', title: 'Grand Final', tag: 'FINAL' },
+  { date: '08–20 Jul', title: 'Pendaftaran & Verifikasi Tim', tag: 'OPEN' },
+  { date: '22–23 Jul', title: 'Technical Meeting & Bracket Draw', tag: 'WAJIB' },
+  { date: '25–28 Jul', title: 'Fase Grup — Kick-off', tag: 'LIVE' },
+  { date: '29–30 Jul', title: 'Babak 8 Besar & Semifinal', tag: 'LIVE' },
+  { date: '31 Jul', title: 'Grand Final', tag: 'FINAL' },
 ]
 
 const STANDINGS_PREVIEW = [
   { team: 'GARUDA ESPORT', p: 3, w: 3, d: 0, l: 0, gd: '+7', pts: 9 },
   { team: 'NUSANTARA FC', p: 3, w: 2, d: 1, l: 0, gd: '+4', pts: 7 },
-  { team: 'RAJA LAUT GG', p: 3, w: 1, d: 1, l: 1, gd: '+1', pts: 4 },
-  { team: 'BINTANG TIMUR', p: 3, w: 0, d: 0, l: 3, gd: '-5', pts: 0 },
+  { team: 'INDOPRIME FC', p: 3, w: 1, d: 1, l: 1, gd: '+1', pts: 4 },
+  { team: 'NIAS PRIME FC', p: 3, w: 0, d: 0, l: 3, gd: '-5', pts: 0 },
 ]
 
 const FAQS = [
