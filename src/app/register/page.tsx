@@ -562,13 +562,25 @@ export default function RegisterPage() {
                                         <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 animate-in fade-in slide-in-from-top-2 duration-200">
                                             <div className="flex items-start gap-3 text-left">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-brand-gold mt-1.5 shrink-0 animate-pulse" />
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-black uppercase tracking-wider font-mono text-brand-gold">
-                                                        Akses Profil Ditangguhkan Sementara
-                                                    </p>
-                                                    <p className="text-[11px] font-medium leading-relaxed text-zinc-400 dark:text-zinc-500">
-                                                        Halaman profil baru bisa diakses mulai tanggal <strong className="text-zinc-800 dark:text-zinc-200">10 Juli 2026</strong> saat gerbang turnamen dibuka. Detail kredensial akun login Anda akan dikirimkan otomatis ke nomor WhatsApp pribadi Anda.
-                                                    </p>
+                                                <div className="space-y-3 w-full">
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs font-black uppercase tracking-wider font-mono text-brand-gold">
+                                                            Akses Profil Ditangguhkan Sementara
+                                                        </p>
+                                                        <p className="text-[11px] font-medium leading-relaxed text-zinc-400 dark:text-zinc-500">
+                                                            Halaman profil baru bisa diakses mulai tanggal <strong>10 Juli 2026</strong> saat gerbang turnamen dibuka. Detail kredensial akun login Anda akan dikirimkan otomatis ke nomor WhatsApp pribadi Anda.
+                                                        </p>
+                                                    </div>
+
+                                                    {/* 🌐 TOMBOL KEMBALI KE LANDING PAGE */}
+                                                    <div className="pt-1">
+                                                        <Link
+                                                            href="/"
+                                                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 hover:text-brand-primary hover:border-brand-primary/40 transition-all shadow-sm"
+                                                        >
+                                                            Kembali ke Landing Page
+                                                        </Link>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

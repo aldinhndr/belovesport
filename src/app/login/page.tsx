@@ -22,6 +22,7 @@ function LoginContent() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const isLockedBeforeLaunch = false;
 
     // Surface OAuth errors that bounced back from /auth/callback.
     useEffect(() => {
@@ -57,6 +58,12 @@ function LoginContent() {
 
     // 2. Pembaruan fungsi klik login Google dengan penanganan ketat runtime browser
     const handleGoogleLogin = async () => {
+        // Interseptor Keamanan Tanggal 10 Juli (Gembok Sementara)
+        if (isLockedBeforeLaunch) {
+            setError('Akses login Google ditangguhkan sementara.');
+            return;
+        }
+
         setError(null);
         setIsGoogleLoading(true);
 
@@ -64,15 +71,20 @@ function LoginContent() {
             const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
             const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-            // Validasi langsung di memori browser
+            // 🛡️ Deteksi Error "No API Key" sebelum ditembakkan ke Supabase
             if (!url || !anonKey) {
-                setError('Variabel lingkungan Supabase belum termuat di browser. Silakan refresh halaman.');
+                setError('Kunci API Supabase gagal dimuat. Sila restart server dev Koko (npm run dev) atau periksa file .env.');
                 setIsGoogleLoading(false);
                 return;
             }
 
-            // Inisialisasi klien lokal (on-the-fly) untuk memastikan apikey disuntikkan sempurna
-            const directSupabase = createClient(url, anonKey);
+            const directSupabase = createClient(url, anonKey, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            });
 
             const { error: oauthError } = await directSupabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -82,7 +94,7 @@ function LoginContent() {
             });
 
             if (oauthError) {
-                setError('Tidak bisa membuka login Google. Coba lagi sebentar lagi.');
+                setError(`Gagal memuat OAuth Google: ${oauthError.message}`);
                 setIsGoogleLoading(false);
             }
         } catch (err) {
