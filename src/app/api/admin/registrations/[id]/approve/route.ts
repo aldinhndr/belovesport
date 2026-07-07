@@ -2,6 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+// Import fungsi notifikasi WhatsApp Fonnte yang sudah kita buat
+import { sendWaNotification } from '@/lib/whatsapp';
 
 export async function POST(
   request: NextRequest,
@@ -54,10 +56,20 @@ export async function POST(
       return { updatedReg, newVoucher };
     });
 
-    // 3. Kembalikan Response Sukses ke Dashboard Admin Frontend
+    // 3. EKSKUSI OTOMATISASI NOTIFIKASI WA FONNTE
+    // Dijalankan secara non-blocking agar dashboard admin tetap terasa responsif
+    sendWaNotification(
+      result.updatedReg.whatsappNumber, // Sesuai dengan kolom whatsappNumber di schema Koko!
+      result.updatedReg.teamName,
+      result.newVoucher.voucherCode,
+      result.updatedReg.leaderName,
+      result.updatedReg.email
+    );
+
+    // 4. Kembalikan Response Sukses ke Dashboard Admin Frontend
     return NextResponse.json({
       success: true,
-      message: `Pendaftaran tim ${result.updatedReg.teamName} berhasil disetujui. Voucher ${result.newVoucher.voucherCode} telah diterbitkan!`,
+      message: `Pendaftaran tim ${result.updatedReg.teamName} berhasil disetujui. Voucher ${result.newVoucher.voucherCode} telah diterbitkan dan dikirim ke WhatsApp!`,
       data: {
         registrationId: result.updatedReg.id,
         teamName: result.updatedReg.teamName,
