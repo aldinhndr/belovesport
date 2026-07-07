@@ -117,18 +117,18 @@ const USP_FEATURES = [
 ]
 
 const SCHEDULE = [
-  { date: '10–20 Jul', title: 'Pendaftaran & Verifikasi Tim', tag: 'OPEN' },
-  { date: '22–23 Jul', title: 'Technical Meeting & Bracket Draw', tag: 'WAJIB' },
-  { date: '25–27 Jul', title: 'Fase Grup — Kick-off', tag: 'LIVE' },
-  { date: '28–30 Jul', title: 'Babak 8 Besar & Semifinal', tag: 'LIVE' },
-  { date: '31 Jul', title: 'Grand Final', tag: 'FINAL' },
+  { date: '01–10 Jul', title: 'Pendaftaran & Verifikasi Tim', tag: 'OPEN' },
+  { date: '12–13 Jul', title: 'Technical Meeting & Bracket Draw', tag: 'WAJIB' },
+  { date: '15–20 Jul', title: 'Fase Grup — Kick-off', tag: 'LIVE' },
+  { date: '22–25 Jul', title: 'Babak 8 Besar & Semifinal', tag: 'LIVE' },
+  { date: '27 Jul', title: 'Grand Final', tag: 'FINAL' },
 ]
 
 const STANDINGS_PREVIEW = [
   { team: 'GARUDA ESPORT', p: 3, w: 3, d: 0, l: 0, gd: '+7', pts: 9 },
-  { team: 'NIAS PRIME', p: 3, w: 2, d: 1, l: 0, gd: '+4', pts: 7 },
-  { team: 'RAJA LAUT', p: 3, w: 1, d: 1, l: 1, gd: '+1', pts: 4 },
-  { team: 'INDO PRIDE', p: 3, w: 0, d: 0, l: 3, gd: '-5', pts: 0 },
+  { team: 'NUSANTARA FC', p: 3, w: 2, d: 1, l: 0, gd: '+4', pts: 7 },
+  { team: 'RAJA LAUT GG', p: 3, w: 1, d: 1, l: 1, gd: '+1', pts: 4 },
+  { team: 'BINTANG TIMUR', p: 3, w: 0, d: 0, l: 3, gd: '-5', pts: 0 },
 ]
 
 const FAQS = [
@@ -184,7 +184,7 @@ function PitchWatermark({ className = '' }: { className?: string }) {
     <svg
       aria-hidden
       viewBox="0 0 400 400"
-      className={`pointer-events-none absolute -z-10 h-[380px] w-[380px] opacity-[0.05] ${className}`}
+      className={`pointer-events-none absolute -z-10 h-56 w-56 opacity-[0.07] sm:h-80 sm:w-80 lg:h-[380px] lg:w-[380px] ${className}`}
     >
       <circle cx="200" cy="200" r="130" fill="none" stroke="currentColor" strokeWidth="2" />
       <circle cx="200" cy="200" r="4" fill="currentColor" />
@@ -200,7 +200,7 @@ function DotGrid({ className = '', tint = 'rgba(86,27,29,0.09)' }: { className?:
     <div
       aria-hidden
       className={`pointer-events-none absolute -z-10 ${className}`}
-      style={{ backgroundImage: `radial-gradient(${tint} 1px, transparent 1px)`, backgroundSize: '24px 24px' }}
+      style={{ backgroundImage: `radial-gradient(${tint} 1px, transparent 1px)`, backgroundSize: '18px 18px' }}
     />
   )
 }
@@ -215,6 +215,49 @@ function StitchTexture({ className = '' }: { className?: string }) {
           'repeating-linear-gradient(-45deg, rgba(252,179,53,0.16) 0 2px, transparent 2px 16px)',
       }}
     />
+  )
+}
+
+/**
+ * MeshGlow — the fix for "monoton putih": two large, soft, blurred
+ * brand-color blobs (maroon + gold) per section, sized down on mobile
+ * so they read as atmosphere, not clutter. Each section gets its own
+ * `variant` so consecutive sections never look identical.
+ */
+function MeshGlow({ variant }: { variant: 'ivory' | 'blush' | 'citrus' | 'dusk' | 'pearl' }) {
+  const variants: Record<string, { pos: string; size: string; color: string }[]> = {
+    ivory: [
+      { pos: '-right-16 -top-20 sm:-right-24 sm:-top-28', size: 'h-52 w-52 sm:h-80 sm:w-80', color: 'bg-brand-primary/[0.07]' },
+      { pos: '-left-20 bottom-0 sm:-left-28', size: 'h-44 w-44 sm:h-72 sm:w-72', color: 'bg-brand-gold/[0.10]' },
+    ],
+    blush: [
+      { pos: '-left-16 -top-16 sm:-left-24 sm:-top-24', size: 'h-52 w-52 sm:h-80 sm:w-80', color: 'bg-brand-gold/[0.10]' },
+      { pos: '-right-20 bottom-10 sm:-right-28', size: 'h-48 w-48 sm:h-72 sm:w-72', color: 'bg-brand-primary/[0.08]' },
+    ],
+    citrus: [
+      { pos: 'left-1/3 -top-24 sm:-top-32', size: 'h-56 w-56 sm:h-96 sm:w-96', color: 'bg-brand-gold/[0.09]' },
+      { pos: '-right-16 bottom-0 sm:-right-20', size: 'h-40 w-40 sm:h-64 sm:w-64', color: 'bg-brand-primary/[0.07]' },
+    ],
+    dusk: [
+      { pos: '-right-14 top-1/4 sm:-right-20', size: 'h-44 w-44 sm:h-72 sm:w-72', color: 'bg-brand-primary/[0.08]' },
+      { pos: 'left-1/4 -bottom-20 sm:-bottom-28', size: 'h-48 w-48 sm:h-80 sm:w-80', color: 'bg-brand-gold/[0.08]' },
+    ],
+    pearl: [
+      { pos: '-left-10 -top-14 sm:-left-16 sm:-top-20', size: 'h-40 w-40 sm:h-64 sm:w-64', color: 'bg-brand-gold/[0.10]' },
+      { pos: 'right-0 bottom-0', size: 'h-56 w-56 sm:h-80 sm:w-80', color: 'bg-brand-primary/[0.06]' },
+    ],
+  }
+
+  return (
+    <>
+      {variants[variant].map((b, idx) => (
+        <div
+          key={idx}
+          aria-hidden
+          className={`pointer-events-none absolute -z-10 rounded-full blur-2xl sm:blur-3xl ${b.pos} ${b.size} ${b.color}`}
+        />
+      ))}
+    </>
   )
 }
 
