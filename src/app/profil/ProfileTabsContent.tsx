@@ -104,13 +104,33 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                             <div className="p-5 sm:p-6">
 
                                                 {/* ── HEADER KARTU: NAMA TIM & STATUS ── */}
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-                                                    <div>
-                                                        <h4 className="text-xl font-black uppercase tracking-tight text-brand-dark">{team.teamName}</h4>
-                                                        <p className="text-xs mt-1 flex items-center gap-1.5 text-brand-muted">
-                                                            <Gamepad2 size={12} /> eFootball ID: <span className="font-mono font-bold text-brand-dark">{team.efootballId}</span>
-                                                        </p>
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                                                    <div className="flex items-center gap-3.5">
+                                                        {/* 📸 FOTO PROFIL / LOGO TIM */}
+                                                        <div className="w-14 h-14 rounded-2xl overflow-hidden relative border border-brand-border bg-brand-bg-surface flex items-center justify-center shrink-0 shadow-inner">
+                                                            {team.profilePictureUrl ? (
+                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                <img
+                                                                    src={team.profilePictureUrl}
+                                                                    alt={`Logo ${team.teamName}`}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                // Fallback jika profilePictureUrl kosong / null
+                                                                <span className="text-xl font-black text-brand-muted uppercase">
+                                                                    {team.teamName.charAt(0)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <div>
+                                                            <h4 className="text-xl font-black uppercase tracking-tight text-brand-dark">{team.teamName}</h4>
+                                                            <p className="text-xs mt-1 flex items-center gap-1.5 text-brand-muted">
+                                                                <Gamepad2 size={12} /> eFootball ID: <span className="font-mono font-bold text-brand-dark">{team.efootballId}</span>
+                                                            </p>
+                                                        </div>
                                                     </div>
+
                                                     <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
                                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${statusConfig.bg} border ${statusConfig.border} ${statusConfig.text}`}>
                                                             {team.status === 'PENDING' && <Clock size={13} />}
