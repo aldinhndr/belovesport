@@ -26,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
    ======================================== */
 
 export const metadata: Metadata = {
-  title: 'BELOVEsPORT | Platform Turnamen eFootball Mobile Terkemuka di Indonesia',
+  title: 'BELOVESPORT | Platform Turnamen eFootball Mobile Terkemuka di Indonesia',
   description:
     'Bergabunglah dengan turnamen eFootball mobile paling terpercaya di Indonesia. 64 slot kompetitif, total hadiah Rp 500 juta+, terverifikasi anti-cheat. Daftar sekarang dan klaim voucher eksklusif Anda.',
   keywords: [
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     'turnamen',
     'Indonesia',
     'esports',
-    'BELOVEsPORT',
+    'BELOVESPORT',
     'Belovecorp',
     'gaming',
     'kompetitif',
@@ -43,11 +43,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Belovecorp', url: 'https://belovecorp.id' }],
   openGraph: {
-    title: 'BELOVEsPORT | Turnamen eFootball Mobile Terkemuka Indonesia',
+    title: 'BELOVESPORT | Turnamen eFootball Mobile Terkemuka Indonesia',
     description:
       'Bergabunglah bersama 64 pemain elite yang bersaing memperebutkan hadiah Rp 500 juta+. Terverifikasi anti-cheat, bracket transparan, dan hadiah eksklusif.',
     url: 'https://belovesport.id',
-    siteName: 'BELOVEsPORT',
+    siteName: 'BELOVESPORT',
     type: 'website',
     locale: 'id_ID',
   },
