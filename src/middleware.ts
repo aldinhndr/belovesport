@@ -78,5 +78,6 @@ export const config = {
         '/register',
         '/signup',
         '/tournament/:path*',
+        '/profil/:path*',
     ],
 };
