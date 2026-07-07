@@ -416,8 +416,8 @@ function HeroSection({ onSignup }: { onSignup: () => void }) {
 
         <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <SkewButton onClick={onSignup} variant="primary" className="animate-pulse-glow text-white">
-            <Zap className="h-5 w-5" />
-            <span className="text-base font-extrabold uppercase tracking-wider">Daftar Sekarang — Rp 25K</span>
+            <Zap className="h-4 w-4" />
+            <span className="text-base font-extrabold uppercase tracking-wider">Daftar Sekarang</span>
           </SkewButton>
           <SkewButton href="/tournament/bracket" variant="outline-dark" className="text-white">
             <span className="text-sm font-bold uppercase tracking-wider">Lihat Bagan Turnamen</span>
