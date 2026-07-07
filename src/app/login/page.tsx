@@ -227,7 +227,7 @@ function LoginContent() {
                     {/* Google Login */}
                     <button
                         type="button"
-                        onClick={handleGoogleLogin}
+                        onClick={() => alert("FITUR INI AKAN SEGERA TERSEDIA")}
                         disabled={isGoogleLoading || isLoading}
                         className="w-full bg-white hover:bg-zinc-50 active:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-800 font-semibold rounded-xl py-3.5 border border-brand-border transition-colors flex items-center justify-center gap-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40"
                     >
