@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
     Ticket, Clock, CheckCircle2, Gamepad2, Users, Swords,
     Calendar, XCircle, ChevronRight, CreditCard, MessageCircle, Zap
+    , Instagram, Mail
 } from 'lucide-react';
 import CopyVoucherButton from '@/components/participant/CopyVoucherButton';
 import MatchActionModal from '@/components/tournament/MatchActionModal';
@@ -101,11 +102,13 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                         <div key={team.id} className="rounded-2xl overflow-hidden relative bg-white border border-brand-border shadow-sm">
                                             <div className={`h-[2px] ${statusConfig.dot} opacity-60`} />
                                             <div className="p-5 sm:p-6">
+
+                                                {/* ── HEADER KARTU: NAMA TIM & STATUS ── */}
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
                                                     <div>
                                                         <h4 className="text-xl font-black uppercase tracking-tight text-brand-dark">{team.teamName}</h4>
                                                         <p className="text-xs mt-1 flex items-center gap-1.5 text-brand-muted">
-                                                            <Gamepad2 size={12} /> eFootball ID: <span className="font-mono">{team.efootballId}</span>
+                                                            <Gamepad2 size={12} /> eFootball ID: <span className="font-mono font-bold text-brand-dark">{team.efootballId}</span>
                                                         </p>
                                                     </div>
                                                     <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
@@ -116,98 +119,81 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                                             {statusConfig.label}
                                                         </span>
                                                         {team.status === 'REJECTED' && team.rejectionReason && (
-                                                            <p className="text-[11px] text-red-600/80 italic max-w-[220px] text-right leading-snug">
+                                                            <p className="text-[11px] text-red-600/80 italic max-w-[220px] text-left sm:text-right leading-snug">
                                                                 &quot;{team.rejectionReason}&quot;
                                                             </p>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-3 mb-5">
-                                                    <div className="p-3.5 rounded-xl bg-brand-bg-surface border border-brand-border">
-                                                        <p className="text-[10px] uppercase tracking-widest mb-1.5 text-brand-muted">Kapten Tim</p>
-                                                        <p className="text-sm font-semibold text-brand-dark">{team.leaderName}</p>
+                                                {/* ── GRID DATA UTAMA PENGGUNA (SESUAI SCHEMA DB) ── */}
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                                                    {/* 1. Kapten Tim */}
+                                                    <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
+                                                        <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">Kapten Tim</p>
+                                                        <p className="text-xs font-semibold text-brand-dark truncate">{team.leaderName}</p>
                                                     </div>
-                                                    <div className="p-3.5 rounded-xl bg-brand-bg-surface border border-brand-border">
-                                                        <p className="text-[10px] uppercase tracking-widest mb-1.5 text-brand-muted">WhatsApp</p>
-                                                        <p className="text-sm font-semibold text-brand-dark">{team.whatsappNumber}</p>
+
+                                                    {/* 2. WhatsApp */}
+                                                    <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
+                                                        <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">WhatsApp</p>
+                                                        <p className="text-xs font-semibold text-brand-dark truncate">{team.whatsappNumber}</p>
+                                                    </div>
+
+                                                    {/* 3. Domisili */}
+                                                    <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
+                                                        <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">Domisili</p>
+                                                        <p className="text-xs font-semibold text-brand-dark truncate">{team.domisili}</p>
+                                                    </div>
+
+                                                    {/* 4. Device / Perangkat */}
+                                                    <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
+                                                        <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">Device</p>
+                                                        <p className="text-xs font-semibold text-brand-dark truncate uppercase">{team.device}</p>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center justify-between p-3.5 rounded-xl bg-brand-bg-surface border border-brand-border">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <CreditCard size={14} className="text-brand-muted" />
-                                                        <span className="text-sm text-brand-dark/70">Bukti Pembayaran</span>
+                                                {/* ── INFORMASI SOSMED & PEMBAYARAN ── */}
+                                                <div className="space-y-2.5">
+                                                    {/* Baris Instagram & Email */}
+                                                    <div className="flex flex-col sm:flex-row gap-2.5">
+                                                        <div className="flex-1 flex items-center justify-between p-3 rounded-xl bg-brand-bg-surface border border-brand-border text-xs">
+                                                            <span className="text-brand-muted flex items-center gap-1.5"><Instagram size={13} /> Instagram</span>
+                                                            <span className="font-semibold text-brand-dark">@{team.instagramHandle.replace('@', '')}</span>
+                                                        </div>
+                                                        <div className="flex-1 flex items-center justify-between p-3 rounded-xl bg-brand-bg-surface border border-brand-border text-xs">
+                                                            <span className="text-brand-muted flex items-center gap-1.5"><Mail size={13} /> Email Kontak</span>
+                                                            <span className="font-semibold text-brand-dark truncate max-w-[180px]">{team.email}</span>
+                                                        </div>
                                                     </div>
-                                                    {team.paymentProofUrl ? (
-                                                        <span className="text-xs font-semibold flex items-center gap-1.5 text-emerald-600">
-                                                            <CheckCircle2 size={12} /> Sudah Diunggah
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-xs font-semibold text-amber-600 flex items-center gap-1.5">
-                                                            <Clock size={12} /> Belum Diunggah
-                                                        </span>
-                                                    )}
+
+                                                    {/* Baris Status Pembayaran */}
+                                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3.5 rounded-xl bg-brand-bg-surface border border-brand-border gap-3">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <CreditCard size={14} className="text-brand-muted" />
+                                                            <div className="text-xs">
+                                                                <span className="text-brand-dark/70 block sm:inline">Metode: <strong className="uppercase text-brand-dark">{team.paymentMethod}</strong></span>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            {team.paymentProofUrl ? (
+                                                                <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-600 justify-end">
+                                                                    <CheckCircle2 size={12} /> Bukti Pembayaran Sudah Diunggah
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5 justify-end">
+                                                                    <Clock size={12} /> Bukti Pembayaran Belum Diunggah
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
+
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── TAB 2: EXCLUSIVE VOUCHER REWARD DISPLAY ── */}
-                {activeTab === 'VOUCHERS' && (
-                    <div className="space-y-4">
-                        {myTeams.filter(t => t.status === 'APPROVED').length === 0 ? (
-                            <div className="text-center py-16 border border-dashed border-brand-border rounded-2xl bg-white shadow-sm">
-                                <Ticket className="mx-auto text-brand-muted/60 mb-3" size={32} />
-                                <p className="text-sm font-bold text-brand-muted">Belum Ada Voucher Reward Aktif</p>
-                                <p className="text-xs text-brand-muted/80 mt-1">E-Voucher eksklusif otomatis dirilis di tab ini setelah validasi data pendaftaran disetujui Admin.</p>
-                            </div>
-                        ) : (
-                            myTeams.filter(t => t.status === 'APPROVED').map((team: any) => {
-                                const voucherCode = Array.isArray(team.vouchers) ? team.vouchers[0]?.voucherCode : team.vouchers?.voucherCode;
-                                return (
-                                    <div key={team.id} className="rounded-2xl overflow-hidden relative bg-white border border-brand-border shadow-sm p-5 sm:p-6">
-                                        <div className="rounded-xl overflow-hidden relative bg-gradient-to-br from-brand-gold/[0.08] to-brand-bronze/[0.04] border border-brand-gold/30 p-5">
-                                            <div className="flex items-center gap-3 mb-4">
-                                                <div className="p-2.5 rounded-xl bg-brand-gold/15">
-                                                    <Ticket size={20} className="text-brand-primary" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-brand-dark">E-Voucher Belovecorp ({team.teamName})</p>
-                                                    <p className="text-xs text-brand-muted">Diskon &amp; merchandise eksklusif</p>
-                                                </div>
-                                            </div>
-
-                                            {voucherCode && (
-                                                <>
-                                                    <div className="mb-4 rounded-xl overflow-hidden border border-brand-gold/40 shadow-sm">
-                                                        <img src="/img/VOUCHER_BELOVE.jpg" alt="Voucher Belovesport" className="w-full h-auto object-cover" />
-                                                    </div>
-
-                                                    <div className="flex items-center justify-between p-3.5 rounded-xl mb-4 bg-white border border-dashed border-brand-gold/50">
-                                                        <span className="text-xl font-black tracking-widest font-mono select-all text-brand-bronze truncate pr-2">
-                                                            {voucherCode}
-                                                        </span>
-                                                        <CopyVoucherButton voucherCode={voucherCode} />
-                                                    </div>
-
-                                                    <a href={`https://wa.me/6282274495235?text=Halo%20Admin%20Belovecorp,%20saya%20atas%20nama%20${team.leaderName}%20ingin%20mengklaim%20kode%20voucher%20eFootball%20saya:%20${voucherCode}`}
-                                                        target="_blank" rel="noopener noreferrer"
-                                                        className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl text-sm font-bold transition-all bg-[#25D366]/10 border border-brand-gold/40 text-[#128C4A]"
-                                                    >
-                                                        <MessageCircle size={16} /> Klaim Hadiah via WA Admin
-                                                    </a>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })
                         )}
                     </div>
                 )}
