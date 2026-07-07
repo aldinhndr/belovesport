@@ -1,46 +1,35 @@
-// Path: src/app/auth/callback/route.ts
-import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+// Path: src/app/auth/callback/page.tsx
+'use client';
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  
-  // Ambil rute tujuan setelah login sukses (default ke dashboard)
-  const next = searchParams.get('next') ?? '/dashboard';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 
-  if (code) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Diabaikan jika dipanggil dari Server Component
-            }
-          },
-        },
+export default function AuthCallbackPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabase = createClient(url, anonKey);
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        // 🎯 SELESAI LOGIN GOOGLE, LEMPAR KE HALAMAN REGISTER / ONBOARDING
+        router.push('/register');
+      } else {
+        router.push('/login?error=session_not_found');
       }
-    );
+    };
 
-    // Tukar kode otentikasi dengan sesi cookie aktif
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
-    }
-  }
+    checkSession();
+  }, [router]);
 
-  // Jika terjadi error atau kode tidak valid, kembalikan ke halaman login
-  return NextResponse.redirect(`${origin}/login?error=auth-callback-failed`);
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#000', color: '#fff' }}>
+      <p>Mengotentikasi akun Google Koko, menyiapkan formulir pendaftaran...</p>
+    </div>
+  );
 }
