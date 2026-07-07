@@ -20,6 +20,7 @@ const STEPS: { id: Step; label: string }[] = [
 
 const MAX_FILE_SIZE_MB = 5
 const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+const [showLockAlert, setShowLockAlert] = useState(false);
 
 function validateImageFile(file: File): string | null {
     if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -334,7 +335,7 @@ export default function RegisterPage() {
                                         </div>
                                         <div className="space-y-1.5">
                                             <label htmlFor="whatsapp" className="text-xs font-bold tracking-wider uppercase text-brand-gold-300 font-jetbrains flex items-center gap-2">
-                                                <Smartphone size={12} className="text-brand-gold" /> Nomor WA
+                                                <Smartphone size={12} className="text-brand-gold" /> Nomor WA Aktif
                                             </label>
                                             <input id="whatsapp" required type="tel" inputMode="numeric" autoComplete="tel" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="08XXXXXXXXX" className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-lg px-4 py-3 text-sm text-brand-white placeholder:text-brand-gold-500 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold transition" />
                                         </div>
@@ -491,8 +492,8 @@ export default function RegisterPage() {
                                             </div>
                                             <p className="text-[9px] text-brand-gold-300 uppercase tracking-wider">Salin Nomor Rekening Tujuan</p>
                                             <p className="text-lg font-bold text-brand-gold tracking-wider select-all">
-                                                {selectedMethod === 'BRI' && '3210-01-XXXXXX-XX-X'}
-                                                {selectedMethod === 'SEABANK' && '9012-XXXX-XXXX'}
+                                                {selectedMethod === 'BRI' && '0176-0103-7457-536'}
+                                                {selectedMethod === 'SEABANK' && 'Segera Tersedia:)'}
                                                 {['DANA', 'GOPAY', 'OVO', 'SPAY'].includes(selectedMethod) && '082225700427'}
                                             </p>
                                             <p className="text-[11px] text-brand-gold-300 font-medium">a.n. Aldin Handrian Halawa</p>
@@ -542,44 +543,37 @@ export default function RegisterPage() {
                                 <div className="space-y-1">
                                     <h3 className="text-2xl font-black text-brand-white uppercase tracking-tight">Pendaftaran Dikirim!</h3>
                                     <p className="text-xs text-brand-gold-300">
-                                        Admin akan memvalidasi pendaftaran Anda dalam 1x24 jam. Silakan simpan voucher eksklusif Anda di bawah ini.
+                                        Admin akan memvalidasi pendaftaran Anda dalam 1x24 jam. Pastikan Nomor WA yang anda input Aktif.
                                     </p>
                                 </div>
 
-                                {/* ── CARD IMAGE UTAMA ── */}
-                                <div className="w-full max-w-xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-brand-bg-dark border border-brand-secondary bg-brand-bg-dark">
-                                    <img
-                                        src="/img/VOUCHER_BELOVE.jpg"
-                                        alt="Voucher Eksklusif Belovesport"
-                                        className="w-full h-auto object-cover block"
-                                    />
-                                </div>
+                                {/* Navigasi Kembali ke Profil (Dikunci Sementara hingga 10 Juli) */}
+                                <div className="w-full max-w-xl mx-auto mt-2 space-y-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowLockAlert(!showLockAlert)}
+                                        className="block w-full px-8 py-3.5 bg-brand-bg-dark border border-brand-secondary text-xs font-bold text-brand-white rounded-lg hover:bg-brand-secondary/50 transition-all cursor-pointer font-mono text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
+                                    >
+                                        Lihat Profil Anda
+                                    </button>
 
-                                {/* Instruksi Penggunaan */}
-                                <div className="bg-brand-bg-dark border border-brand-gold/30 rounded-xl p-4 text-left max-w-xl mx-auto shadow-inner">
-                                    <ul className="text-[10px] text-brand-gold-300 space-y-1.5 leading-relaxed">
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="text-brand-secondary">•</span>
-                                            <span className="text-brand-white font-bold">Silakan screenshot atau simpan gambar voucher di atas</span> sebagai bukti kepemilikan.
-                                        </li>
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="text-brand-gold">•</span>
-                                            Voucher ini terikat otomatis dengan identitas akun kamu saat ini.
-                                        </li>
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="text-brand-gold">•</span>
-                                            Klaim keuntungan peserta akan aktif setelah admin melakukan approve di dashboard.
-                                        </li>
-                                    </ul>
+                                    {/* ── BANNER NOTIFIKASI PENGUNCIAN PREMIUM ── */}
+                                    {showLockAlert && (
+                                        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="flex items-start gap-3 text-left">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-gold mt-1.5 shrink-0 animate-pulse" />
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-black uppercase tracking-wider font-mono text-brand-gold">
+                                                        Akses Profil Ditangguhkan Sementara
+                                                    </p>
+                                                    <p className="text-[11px] font-medium leading-relaxed text-zinc-400 dark:text-zinc-500">
+                                                        Halaman profil baru bisa diakses mulai tanggal <strong className="text-zinc-800 dark:text-zinc-200">10 Juli 2026</strong> saat gerbang turnamen dibuka. Detail kredensial akun login Anda akan dikirimkan otomatis ke nomor WhatsApp pribadi Anda.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-
-                                {/* Navigasi Kembali ke Profil */}
-                                <Link
-                                    href="/profil"
-                                    className="block w-full max-w-xl mx-auto px-8 py-3.5 bg-brand-bg-dark border border-brand-secondary text-xs font-bold text-brand-white rounded-lg hover:bg-brand-secondary/50 transition-all cursor-pointer font-jetbrains mt-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
-                                >
-                                    Lihat Profil
-                                </Link>
                             </motion.div>
                         )}
                     </AnimatePresence>
