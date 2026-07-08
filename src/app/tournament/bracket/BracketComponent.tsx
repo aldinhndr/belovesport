@@ -81,21 +81,22 @@ function CustomMatchCard({
             onMouseLeave={onMouseLeave}
             className="flex items-center"
         >
-            <div className="w-full rounded-xl overflow-hidden border border-brand-border bg-white shadow-[0_1px_2px_rgba(24,24,27,0.06),0_6px_16px_-6px_rgba(24,24,27,0.1)]">
+            <div className={`w-full rounded-xl overflow-hidden border bg-white shadow-[0_1px_2px_rgba(24,24,27,0.06),0_6px_16px_-6px_rgba(24,24,27,0.1)] transition-shadow ${isDone ? 'border-brand-border' : 'border-brand-gold/40 hover:shadow-brand'}`}>
+                <div className={`h-[3px] w-full ${isDone ? 'bg-gradient-brand' : 'bg-brand-gold/60'}`} />
                 <div className="flex justify-between items-center px-2.5 py-1.5 bg-brand-bg-surface border-b border-brand-border">
                     <span className="text-[9px] font-black font-jetbrains uppercase tracking-widest text-brand-muted">
                         #{match?.matchNumber}
                     </span>
-                    <span className={`text-[8px] font-jetbrains font-bold uppercase ${isDone ? 'text-emerald-600' : 'text-brand-gold animate-pulse'}`}>
+                    <span className={`text-[8px] font-jetbrains font-black uppercase px-1.5 py-0.5 rounded ${isDone ? 'text-emerald-700 bg-emerald-50' : 'text-brand-gold bg-brand-gold/10 animate-pulse'}`}>
                         {isDone ? 'FT' : match?.startTime}
                     </span>
                 </div>
 
                 <div
                     onClick={() => onPartyClick && topParty && onPartyClick(topParty, topWon)}
-                    className={`flex justify-between items-center px-3 py-2 border-b border-brand-border transition-colors ${topWon ? 'bg-brand-gold/10' : topHovered ? 'bg-brand-bg-surface' : ''}`}
+                    className={`flex justify-between items-center px-3 py-2 border-b border-brand-border transition-colors ${topWon ? 'bg-brand-gold/10 border-l-2 border-l-brand-gold' : topHovered ? 'bg-brand-bg-surface' : ''}`}
                 >
-                    <span className={`text-xs font-bold truncate pr-2 ${topParty?.name && topParty.name !== teamNameFallback ? 'text-brand-dark' : 'text-brand-muted'}`}>
+                    <span className={`text-xs font-bold truncate pr-2 ${topParty?.name && topParty.name !== teamNameFallback ? 'text-brand-dark' : 'text-brand-muted italic'}`}>
                         {topParty?.name || teamNameFallback}
                     </span>
                     <span className={`font-jetbrains font-black text-sm shrink-0 ${topWon ? 'text-brand-primary' : 'text-brand-muted'}`}>
@@ -105,9 +106,9 @@ function CustomMatchCard({
 
                 <div
                     onClick={() => onPartyClick && bottomParty && onPartyClick(bottomParty, bottomWon)}
-                    className={`flex justify-between items-center px-3 py-2 transition-colors ${bottomWon ? 'bg-brand-gold/10' : bottomHovered ? 'bg-brand-bg-surface' : ''}`}
+                    className={`flex justify-between items-center px-3 py-2 transition-colors ${bottomWon ? 'bg-brand-gold/10 border-l-2 border-l-brand-gold' : bottomHovered ? 'bg-brand-bg-surface' : ''}`}
                 >
-                    <span className={`text-xs font-bold truncate pr-2 ${bottomParty?.name && bottomParty.name !== teamNameFallback ? 'text-brand-dark' : 'text-brand-muted'}`}>
+                    <span className={`text-xs font-bold truncate pr-2 ${bottomParty?.name && bottomParty.name !== teamNameFallback ? 'text-brand-dark' : 'text-brand-muted italic'}`}>
                         {bottomParty?.name || teamNameFallback}
                     </span>
                     <span className={`font-jetbrains font-black text-sm shrink-0 ${bottomWon ? 'text-brand-primary' : 'text-brand-muted'}`}>
@@ -208,16 +209,17 @@ export default function BracketComponent() {
     const MobileMatchCard = ({ match }: { match: any }) => (
         <div
             onClick={() => match.dbId && setSelectedMatchId(match.dbId)}
-            className={`bg-white border border-brand-border rounded-xl overflow-hidden shadow-[0_1px_3px_rgba(24,24,27,0.06),0_8px_20px_-10px_rgba(24,24,27,0.12)] transition-all duration-200 ${match.dbId ? 'cursor-pointer hover:border-brand-gold/60 hover:-translate-y-0.5 hover:shadow-[0_1px_3px_rgba(24,24,27,0.08),0_14px_28px_-10px_rgba(86,27,29,0.18)]' : 'opacity-70'}`}
+            className={`bg-white border rounded-xl overflow-hidden shadow-[0_1px_3px_rgba(24,24,27,0.06),0_8px_20px_-10px_rgba(24,24,27,0.12)] transition-all duration-200 ${match.state === 'DONE' ? 'border-brand-border' : 'border-brand-gold/40'} ${match.dbId ? 'cursor-pointer hover:border-brand-gold/60 hover:-translate-y-0.5 hover:shadow-[0_1px_3px_rgba(24,24,27,0.08),0_14px_28px_-10px_rgba(86,27,29,0.18)]' : 'opacity-70'}`}
         >
+            <div className={`h-[3px] w-full ${match.state === 'DONE' ? 'bg-gradient-brand' : 'bg-brand-gold/50'}`} />
             <div className="bg-brand-bg-surface border-b border-brand-border px-3 py-2 flex justify-between items-center text-[10px] font-black font-jetbrains tracking-widest text-brand-muted uppercase">
                 <span>Match #{match.matchNumber}</span>
-                <span className={match.state === 'DONE' ? 'text-emerald-600' : match.startTime === 'VERIFIKASI' ? 'text-amber-500 animate-pulse' : 'text-brand-secondary'}>
+                <span className={`px-1.5 py-0.5 rounded ${match.state === 'DONE' ? 'text-emerald-700 bg-emerald-50' : match.startTime === 'VERIFIKASI' ? 'text-amber-600 bg-amber-50 animate-pulse' : 'text-brand-secondary bg-brand-secondary/10'}`}>
                     {match.state === 'DONE' ? 'FT' : match.startTime}
                 </span>
             </div>
             {match.participants.map((p: any, i: number) => (
-                <div key={p.id} className={`flex justify-between items-center px-4 py-3 ${i === 0 ? 'border-b border-brand-border' : ''} ${p.isWinner ? 'bg-brand-gold/10' : ''}`}>
+                <div key={p.id} className={`flex justify-between items-center px-4 py-3 ${i === 0 ? 'border-b border-brand-border' : ''} ${p.isWinner ? 'bg-brand-gold/10 border-l-2 border-l-brand-gold' : ''}`}>
                     <span className={`text-sm font-bold truncate pr-2 ${p.name !== 'TBD' ? 'text-brand-dark' : 'text-brand-muted italic'}`}>{p.name}</span>
                     <span className={`font-jetbrains font-black text-base shrink-0 ${p.isWinner ? 'text-brand-primary' : 'text-brand-muted'}`}>{p.resultText}</span>
                 </div>
@@ -228,7 +230,9 @@ export default function BracketComponent() {
     if (isLoading || !isMounted) {
         return (
             <div className="flex flex-col items-center justify-center w-full h-screen bg-brand-bg-light text-brand-primary px-4">
-                <Loader2 size={40} className="animate-spin mb-4" />
+                <div className="p-5 rounded-2xl bg-brand-bg-surface border border-brand-border shadow-sm mb-5">
+                    <Loader2 size={36} className="animate-spin" />
+                </div>
                 <p className="font-jetbrains text-sm font-bold uppercase tracking-widest text-brand-muted text-center">Menghubungkan ke Server Arena...</p>
             </div>
         );
@@ -237,21 +241,27 @@ export default function BracketComponent() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center w-full h-screen bg-brand-bg-light text-red-600 px-4">
-                <ShieldAlert size={40} className="mb-4" />
-                <p className="font-bold text-center">Gagal menyelaraskan data bagan dengan server.</p>
+                <div className="p-5 rounded-2xl bg-red-50 border border-red-200 shadow-sm mb-5">
+                    <ShieldAlert size={36} />
+                </div>
+                <p className="font-black font-jetbrains uppercase tracking-wide text-sm text-center">Gagal menyelaraskan data bagan dengan server.</p>
+                <p className="text-xs text-brand-muted mt-1.5 text-center">Silakan muat ulang halaman untuk mencoba kembali.</p>
             </div>
         );
     }
 
     return (
         <div className="w-full bg-brand-bg-light text-brand-dark font-sans relative flex flex-col">
-            <div className="fixed top-0 left-0 right-0 h-px bg-gradient-brand z-30 opacity-70" />
+            <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/70 to-transparent z-30" />
 
             {/* ── HEADER CONTROL ── */}
             <div className="relative z-20 border-b border-brand-border bg-brand-bg-light/80 backdrop-blur-md pt-6 pb-5 px-5 sm:px-6 md:px-12 w-full">
                 <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2 text-[11px] font-black font-jetbrains bg-white border border-brand-border px-4 py-2 rounded-xl shadow-sm text-brand-muted uppercase tracking-wider">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
                         Live Connected
                     </div>
 
@@ -281,10 +291,13 @@ export default function BracketComponent() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`shrink-0 snap-start px-4 sm:px-5 py-2.5 rounded-full text-xs font-black font-jetbrains tracking-widest uppercase transition-all border ${activeTab === tab.id ? 'bg-gradient-brand border-transparent text-white shadow-brand' : 'bg-white border-brand-border text-brand-muted hover:border-brand-gold/50 hover:text-brand-dark'}`}
+                                    className={`relative shrink-0 snap-start px-4 sm:px-5 py-2.5 rounded-full text-xs font-black font-jetbrains tracking-widest uppercase transition-all border ${activeTab === tab.id ? 'bg-gradient-brand border-transparent text-white shadow-brand-lg' : 'bg-white border-brand-border text-brand-muted hover:border-brand-gold/50 hover:text-brand-dark'}`}
                                 >
                                     <span className="sm:hidden">{tab.short}</span>
                                     <span className="hidden sm:inline">{tab.label}</span>
+                                    {activeTab === tab.id && (
+                                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-brand-gold shadow-[0_0_6px_rgba(252,179,53,0.9)]" aria-hidden />
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -303,8 +316,8 @@ export default function BracketComponent() {
                 {/* MODE 2: FULL SVG BRACKET */}
                 {viewMode === 'FULL' && (
                     <div className="w-full flex flex-col items-center gap-10 pt-8 sm:pt-10">
-                        <div className="flex md:hidden items-center gap-2 text-brand-muted text-[11px] font-jetbrains font-bold uppercase tracking-wide bg-brand-bg-surface border border-brand-border px-4 py-2 rounded-full">
-                            <MoveHorizontal size={14} className="text-brand-gold" />
+                        <div className="flex md:hidden items-center gap-2 text-brand-muted text-[11px] font-jetbrains font-bold uppercase tracking-wide bg-brand-bg-surface border border-brand-border px-4 py-2 rounded-full shadow-sm">
+                            <MoveHorizontal size={14} className="text-brand-gold animate-pulse" />
                             Geser ke samping untuk melihat seluruh bagan
                         </div>
 
@@ -337,11 +350,13 @@ export default function BracketComponent() {
                         {/* PEREBUTAN JUARA 3 */}
                         <div className="w-full flex flex-col items-center mb-20 px-4">
                             <div className="flex items-center gap-2 mb-4">
-                                <div className="h-px w-8 bg-brand-border" />
+                                <div className="h-px w-8 bg-gradient-to-r from-transparent to-brand-gold/60" />
+                                <Trophy size={14} className="text-brand-gold" />
                                 <h3 className="text-brand-primary font-black uppercase font-jetbrains text-center tracking-wide text-sm md:text-base">Perebutan Juara 3 & 4</h3>
-                                <div className="h-px w-8 bg-brand-border" />
+                                <Trophy size={14} className="text-brand-gold" />
+                                <div className="h-px w-8 bg-gradient-to-l from-transparent to-brand-gold/60" />
                             </div>
-                            <div className="w-full max-w-[420px] bg-white border border-brand-border rounded-2xl shadow-sm py-2 flex justify-center">
+                            <div className="w-full max-w-[420px] bg-white border border-brand-border rounded-2xl shadow-[0_1px_2px_rgba(24,24,27,0.05),0_10px_30px_-14px_rgba(86,27,29,0.15)] py-2 flex justify-center">
                                 <div style={{ minWidth: '380px' }}>
                                     <SingleEliminationBracket
                                         matches={thirdPlaceMatch}

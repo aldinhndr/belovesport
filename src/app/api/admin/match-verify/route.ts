@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { MatchStatus, MatchStage } from '@prisma/client';
 
-// 1. GET: Ambil semua match yang berstatus WAITING_VERIFICATION
 export async function GET() {
   try {
     const pendingMatches = await prisma.match.findMany({
@@ -22,11 +21,10 @@ export async function GET() {
   }
 }
 
-// 2. POST: Approve atau Reject Laporan Skor Peserta (Mendukung Group & Knockout)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { matchId, action } = body; // action: 'APPROVE' | 'REJECT'
+    const { matchId, action } = body;
 
     if (!matchId || !action) {
       return NextResponse.json({ success: false, message: 'Data matchId dan action wajib diisi.' }, { status: 400 });
@@ -45,7 +43,7 @@ export async function POST(request: NextRequest) {
       await prisma.match.update({
         where: { id: matchId },
         data: {
-          matchStatus: MatchStatus.SCHEDULED, // Kembali ke jadwal awal
+          matchStatus: MatchStatus.SCHEDULED,
           homeScoreLeg1: null,
           awayScoreLeg1: null,
           homeScoreLeg2: null,
@@ -66,81 +64,131 @@ export async function POST(request: NextRequest) {
     let winnerId: string | null = null;
     const isGroupStage = match.stage === MatchStage.GROUP;
 
+    // Hitung Pemenang Pertandingan
     if (isGroupStage) {
-      // Logika Fase Grup: Hanya menghitung skor tunggal Leg 1
       if (hL1 > aL1) winnerId = match.homeTeamId;
       else if (aL1 > hL1) winnerId = match.awayTeamId;
-      // Jika seri, winnerId tetap null (standar poin klasemen seri +1)
     } else {
-      // Logika Fase Gugur (Knockout): Akumulasi Agregat Leg 1 + Leg 2
       const totalHome = hL1 + hL2;
       const totalAway = aL1 + aL2;
-
-      if (totalHome > totalAway) {
-        winnerId = match.homeTeamId;
-      } else if (totalAway > totalHome) {
-        winnerId = match.awayTeamId;
-      } else {
-        // Fallback jika agregat murni seri (bisa ditentukan adu penalti dll)
-        winnerId = match.homeTeamId; 
-      }
+      if (totalHome > totalAway) winnerId = match.homeTeamId;
+      else if (totalAway > totalHome) winnerId = match.awayTeamId;
+      else winnerId = match.homeTeamId; // Fallback agregat seri murni
     }
 
-    // UPDATE MATCH INI MENJADI COMPLETED
-    await prisma.match.update({
-      where: { id: matchId },
-      data: {
-        matchStatus: MatchStatus.COMPLETED,
-        winnerId: winnerId,
-      },
-    });
+    // 🎯 ATOMIC TRANSACTION ENGINE: Eksekusi seluruh mutasi sekaligus secara aman
+    await prisma.$transaction(async (tx) => {
+      
+      // 1. Kunci status match saat ini menjadi COMPLETED
+      await tx.match.update({
+        where: { id: matchId },
+        data: {
+          matchStatus: MatchStatus.COMPLETED,
+          winnerId: winnerId,
+        },
+      });
 
-    // ── AUTOMATION MAJU KE BAGAN BRACKET KNOCKOUT BERIKUTNYA ──
-    // Karena di schema.prisma tidak ada kolom 'nextMatchId', kita hitung target id match berikutnya menggunakan matematika sirkuit
-    if (!isGroupStage) {
-      const currentId = match.matchNumber; // Memanfaatkan urutan nomor match sirkuit Koko
-      let nextMatchNumber = 0;
-      let nextStage: MatchStage = MatchStage.FINAL;
-
-      // Kalkulasi nomor match tujuan berdasarkan rentang babak knockout
-      if (currentId >= 1 && currentId <= 16) {
-        nextMatchNumber = 16 + Math.ceil(currentId / 2); // Menuju 16 Besar
-        nextStage = MatchStage.KNOCKOUT_16;
-      } else if (currentId >= 17 && currentId <= 24) {
-        nextMatchNumber = 24 + Math.ceil((currentId - 16) / 2); // Menuju Perempat Final
-        nextStage = MatchStage.QUARTER_FINAL;
-      } else if (currentId >= 25 && currentId <= 28) {
-        nextMatchNumber = 28 + Math.ceil((currentId - 24) / 2); // Menuju Semi Final
-        nextStage = MatchStage.SEMI_FINAL;
-      } else if (currentId >= 29 && currentId <= 30) {
-        nextMatchNumber = 31; // Menuju Grand Final murni
-        nextStage = MatchStage.FINAL;
-      }
-
-      if (nextMatchNumber > 0 && winnerId) {
-        // Cari match di database yang berada di stage berikutnya dengan nomor match yang cocok
-        const nextMatchObj = await prisma.match.findFirst({
-          where: { 
-            stage: nextStage,
-            matchNumber: nextMatchNumber
-          },
+      // 2. JIKA FASE GRUP: Hitung dan suntik poin klasemen ke tabel group_teams secara berkala
+      if (isGroupStage && match.groupName && match.homeTeamId && match.awayTeamId) {
+        
+        // Cari baris induk group di DB untuk mendapatkan groupId asli
+        const targetGroup = await (tx as any)['group'].findUnique({
+          where: { groupName: match.groupName }
         });
 
-        if (nextMatchObj) {
-          // Aturan: Jika nomor match asal ganjil mengisi slot Home, jika genap mengisi slot Away di match tujuan
-          const isHomeSlot = currentId % 2 !== 0;
+        if (targetGroup) {
+          // Tentukan distribusi alokasi matematika poin tanding
+          const homeWon = hL1 > aL1 ? 1 : 0;
+          const homeDraw = hL1 === aL1 ? 1 : 0;
+          const homeLost = hL1 < aL1 ? 1 : 0;
+          const homePoints = homeWon * 3 + homeDraw * 1;
 
-          await prisma.match.update({
-            where: { id: nextMatchObj.id },
-            data: isHomeSlot ? { homeTeamId: winnerId } : { awayTeamId: winnerId },
+          const awayWon = aL1 > hL1 ? 1 : 0;
+          const awayDraw = aL1 === hL1 ? 1 : 0;
+          const awayLost = aL1 < hL1 ? 1 : 0;
+          const awayPoints = awayWon * 3 + awayDraw * 1;
+
+          // A. Mutasi live update stat tim HOME menggunakan operator increment database atomik
+          await (tx as any)['groupTeam'].update({
+            where: {
+              groupId_teamId: { groupId: targetGroup.id, teamId: match.homeTeamId }
+            },
+            data: {
+              played: { increment: 1 },
+              won: { increment: homeWon },
+              drawn: { increment: homeDraw },
+              lost: { increment: homeLost },
+              goalsFor: { increment: hL1 },
+              goalsAgainst: { increment: aL1 },
+              goalDifference: { increment: hL1 - aL1 },
+              points: { increment: homePoints }
+            }
+          });
+
+          // B. Mutasi live update stat tim AWAY menggunakan operator increment database atomik
+          await (tx as any)['groupTeam'].update({
+            where: {
+              groupId_teamId: { groupId: targetGroup.id, teamId: match.awayTeamId }
+            },
+            data: {
+              played: { increment: 1 },
+              won: { increment: awayWon },
+              drawn: { increment: awayDraw },
+              lost: { increment: awayLost },
+              goalsFor: { increment: aL1 },
+              goalsAgainst: { increment: hL1 },
+              goalDifference: { increment: aL1 - hL1 },
+              points: { increment: awayPoints }
+            }
           });
         }
       }
-    }
+
+      // 3. JIKA FASE GUGUR: Jalankan otomatisasi sirkuit lompatan bagan bracket berikutnya
+      if (!isGroupStage && winnerId) {
+        const currentId = match.matchNumber;
+        let nextMatchNumber = 0;
+        let nextStage: MatchStage = MatchStage.FINAL;
+
+        if (currentId >= 1 && currentId <= 16) {
+          nextMatchNumber = 16 + Math.ceil(currentId / 2);
+          nextStage = MatchStage.KNOCKOUT_16;
+        } else if (currentId >= 17 && currentId <= 24) {
+          nextMatchNumber = 24 + Math.ceil((currentId - 16) / 2);
+          nextStage = MatchStage.QUARTER_FINAL;
+        } else if (currentId >= 25 && currentId <= 28) {
+          nextMatchNumber = 28 + Math.ceil((currentId - 24) / 2);
+          nextStage = MatchStage.SEMI_FINAL;
+        } else if (currentId >= 29 && currentId <= 30) {
+          nextMatchNumber = 31;
+          nextStage = MatchStage.FINAL;
+        }
+
+        if (nextMatchNumber > 0) {
+          const nextMatchObj = await tx.match.findFirst({
+            where: { 
+              stage: nextStage,
+              matchNumber: nextMatchNumber
+            },
+          });
+
+          if (nextMatchObj) {
+            const isHomeSlot = currentId % 2 !== 0;
+            await tx.match.update({
+              where: { id: nextMatchObj.id },
+              data: isHomeSlot ? { homeTeamId: winnerId } : { awayTeamId: winnerId },
+            });
+          }
+        }
+      }
+
+    }, {
+      timeout: 15000 // Jatah waktu 15 detik eksekusi agar terhindar dari kendala kedaluwarsa koneksi
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Pertandingan berhasil diverifikasi! Sistem sirkuit otomatis diperbarui.',
+      message: 'Pertandingan berhasil diverifikasi! Papan skor klasemen live sirkuit resmi diperbarui.',
     }, { status: 200 });
 
   } catch (error) {

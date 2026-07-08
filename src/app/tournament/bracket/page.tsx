@@ -18,24 +18,24 @@ export default async function BracketPage() {
         <div className="min-h-screen bg-brand-bg-light text-brand-dark relative overflow-hidden pb-20 flex flex-col">
 
             {/* 🌟 EFEK CAHAYA & BACKGROUND PREMIUM */}
-            <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/60 to-transparent z-40" />
+            <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/70 to-transparent z-40" />
             <div
-                className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.08] pointer-events-none blur-[110px]"
+                className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.09] pointer-events-none blur-[110px]"
                 style={{ background: 'radial-gradient(ellipse, #FCB335 0%, #82403B 55%, transparent 70%)' }}
                 aria-hidden
             />
             {/* Tekstur Grid Halus */}
-            <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{
+            <div className="absolute inset-0 opacity-[0.025] pointer-events-none" style={{
                 backgroundImage: 'repeating-linear-gradient(45deg, #561B1D 0, #561B1D 1px, transparent 0, transparent 50%)',
                 backgroundSize: '20px 20px'
             }} />
 
-            {/* 🌟 TOP NAVBAR GLOBAL (Konsisten dengan Profil) */}
+            {/* 🌟 TOP NAVBAR GLOBAL (Konsisten di seluruh halaman tournament) */}
             <nav className="sticky top-0 z-50 border-b border-brand-border bg-brand-bg-light/85 backdrop-blur-xl shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Link href="/profil" className="flex items-center gap-2 group focus-visible:outline-none">
-                            <div className="w-7 h-7 rounded-md overflow-hidden flex items-center justify-center bg-gradient-to-br from-brand-gold to-brand-bronze shadow-sm group-hover:scale-105 transition-transform">
+                            <div className="w-7 h-7 rounded-md overflow-hidden flex items-center justify-center bg-gradient-brand shadow-brand group-hover:scale-105 transition-transform">
                                 <img
                                     src="/logos/logo_BELOVESPORT.png"
                                     alt="Belovesport"
@@ -45,7 +45,7 @@ export default async function BracketPage() {
                             <span className="font-black text-sm tracking-widest uppercase text-brand-dark group-hover:text-brand-primary transition-colors">Belovesport</span>
                         </Link>
                         <span className="text-brand-muted/40 text-xs" aria-hidden>/</span>
-                        <span className="text-brand-muted text-xs font-medium">Knockout Stage</span>
+                        <span className="text-brand-muted text-xs font-bold font-jetbrains uppercase tracking-wider">Knockout Stage</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -53,7 +53,7 @@ export default async function BracketPage() {
                             className="relative p-2 rounded-lg text-brand-muted hover:text-brand-dark hover:bg-brand-bg-surface transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
                         >
                             <Bell size={16} />
-                            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-gold" aria-hidden />
+                            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-gold shadow-[0_0_6px_rgba(252,179,53,0.8)]" aria-hidden />
                         </button>
                         <LogoutButtonParticipant />
                     </div>
@@ -70,7 +70,7 @@ export default async function BracketPage() {
                                 <ArrowLeft size={18} className="text-brand-secondary group-hover:text-brand-primary transition-colors" />
                             </Link>
 
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-brand shadow-brand">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-brand shadow-brand-lg">
                                 <GitFork size={18} className="text-white" />
                             </div>
 
@@ -85,7 +85,7 @@ export default async function BracketPage() {
                     </div>
 
                     {/* INDIKATOR LIVE KONEKSI UTAMA */}
-                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black font-jetbrains tracking-widest shadow-sm border border-brand-primary/20 bg-brand-primary/5 text-brand-primary transition-all hover:scale-105 cursor-default shrink-0">
+                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black font-jetbrains tracking-widest shadow-sm border border-brand-primary/20 bg-brand-primary/5 text-brand-primary transition-all hover:scale-105 hover:shadow-brand cursor-default shrink-0">
                         <span className="relative flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-60"></span>
                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-primary"></span>

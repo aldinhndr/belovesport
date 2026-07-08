@@ -40,6 +40,10 @@ export async function middleware(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     const url = request.nextUrl.clone();
 
+    // 🎯 Email khusus Ko Aldin sebagai Super Admin
+    const SUPER_ADMIN_EMAIL = "aldinhalawa2023@gmail.com"; 
+    const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+
     // 🔑 BARKADE 1: Gembok Pra-Peluncuran (Matikan sakelar jika sudah rilis resmi)
     const isLockedBeforeLaunch = true; 
 
@@ -51,16 +55,24 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // 🔑 BARIKADE 2: Route Guard Otentikasi (Mencegah Tembak Rute Folder)
-    // Jika user MENCOBA MENGETIK rute internal tapi BELUM LOGIN, tendang balik ke /login
-    if (!user && (url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin'))) {
+    // 🔑 BARIKADE 2: Route Guard Otentikasi
+    // Jika ada yang coba masuk ke /admin, wajib login DAN wajib memiliki email Ko Aldin
+    if (url.pathname.startsWith('/admin')) {
+        if (!user || !isSuperAdmin) {
+            url.pathname = '/login';
+            return NextResponse.redirect(url);
+        }
+    }
+
+    // Perlindungan umum untuk /dashboard biasa (user umum wajib login)
+    if (!user && url.pathname.startsWith('/dashboard')) {
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
 
-    // Jika user SUDAH LOGIN tapi mencoba mengakses halaman /login lagi, lempar langsung ke dashboard
     if (user && url.pathname === '/login') {
-        url.pathname = '/dashboard';
+        // Jika yang login adalah Koko, lempar ke /admin, jika user biasa lempar ke /dashboard
+        url.pathname = isSuperAdmin ? '/admin' : '/dashboard';
         return NextResponse.redirect(url);
     }
 

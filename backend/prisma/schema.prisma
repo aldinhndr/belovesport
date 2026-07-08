@@ -29,6 +29,7 @@ model Registration {
   homeMatches       Match[]          @relation("HomeTeam")
   awayMatches       Match[]          @relation("AwayTeam")
   wonMatches        Match[]          @relation("WinnerTeam")
+  groupTeams        GroupTeam[]
 
   participantId String?      @map("participant_id")
   participant   Participant? @relation(fields: [participantId], references: [id])
@@ -90,6 +91,44 @@ model Match {
   chats               MatchChat[]
 
   @@map("matches")
+}
+
+// ── 5. TABEL ENTITAS GRUP (KLASMEN RESMI) ──
+model Group {
+  id        String      @id @default(uuid())
+  groupName String      @unique @map("group_name") // Nama Grup (A, B, C, dst.)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  // Relasi ke tabel statistik tim di dalam grup ini
+  teams     GroupTeam[]
+
+  @@map("tournament_groups")
+}
+
+// ── 6. TABEL STATISTIK TIM DI DALAM GRUP (LIVE STANDING) ──
+model GroupTeam {
+  id             String   @id @default(uuid())
+  groupId        String   @map("group_id")
+  teamId         String   @map("team_id")
+  teamName       String   @map("team_name")
+  played         Int      @default(0)
+  won            Int      @default(0)
+  drawn          Int      @default(0)
+  lost           Int      @default(0)
+  goalsFor       Int      @default(0) @map("goals_for")
+  goalsAgainst   Int      @default(0) @map("goals_against")
+  goalDifference Int      @default(0) @map("goal_difference")
+  points         Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Hubungan Relasi
+  group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  registration Registration @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("group_teams")
+  @@unique([groupId, teamId]) // Satu tim tidak boleh terdaftar dua kali di grup yang sama
 }
 
 enum MatchStatus {

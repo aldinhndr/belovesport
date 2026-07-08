@@ -23,8 +23,6 @@ interface ParticipantData {
     status: string;
     createdAt: string;
     vouchers: Voucher[];
-
-    // HANYA FIELD PROFIL USER
     participant?: {
         profilePictureUrl?: string;
         username: string;
@@ -118,17 +116,19 @@ export default function ParticipantDatabase() {
                 </div>
                 <button
                     onClick={handleExportCSV}
-                    className="bg-brand-bg-light border-2 border-brand-primary hover:bg-brand-primary hover:text-white text-brand-primary font-black font-jetbrains py-2.5 px-5 rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shrink-0 shadow-sm focus:ring-4 focus:ring-brand-primary/20"
+                    className="bg-brand-bg-light border-2 border-brand-primary hover:bg-brand-primary hover:text-white text-brand-primary font-black font-jetbrains py-2.5 px-5 rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shrink-0 shadow-sm hover:shadow-brand focus:ring-4 focus:ring-brand-primary/20"
                 >
                     <Download size={16} /> EXPORT CSV / EXCEL
                 </button>
             </div>
 
-            {/* STRUKTUR FILTER & SEARCH */}
-            <div className="bg-brand-bg-surface border border-brand-border rounded-3xl overflow-hidden shadow-sm">
-                <div className="p-4 bg-brand-bg-light border-b border-brand-border flex flex-col md:flex-row justify-between items-center gap-4">
+            {/* STRUKTUR FILTER & SEARCH PREMIUM */}
+            <div className="bg-brand-bg-light border border-brand-border rounded-3xl overflow-hidden shadow-sm">
+                <div className="p-4 bg-brand-bg-surface/60 border-b border-brand-border flex flex-col md:flex-row justify-between items-center gap-4">
+
+                    {/* TABS FILTER */}
                     <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto custom-scrollbar pb-2 md:pb-0">
-                        <div className="flex items-center gap-1.5 text-xs font-black uppercase font-jetbrains text-brand-muted pr-3 border-r border-slate-300">
+                        <div className="flex items-center gap-1.5 text-xs font-black uppercase font-jetbrains text-brand-muted pr-3 border-r border-brand-border">
                             <Filter size={16} />
                         </div>
                         {[
@@ -140,13 +140,17 @@ export default function ParticipantDatabase() {
                             <button
                                 key={tab.id}
                                 onClick={() => setStatusFilter(tab.id)}
-                                className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all border ${statusFilter === tab.id ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/30 shadow-sm' : 'bg-transparent border-transparent text-slate-500 hover:text-brand-dark hover:bg-slate-100'}`}
+                                className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all border ${statusFilter === tab.id
+                                        ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/30 shadow-sm'
+                                        : 'bg-transparent border-transparent text-brand-muted hover:text-brand-dark hover:bg-brand-border/40'
+                                    }`}
                             >
                                 {tab.label}
                             </button>
                         ))}
                     </div>
 
+                    {/* SEARCH INPUT */}
                     <div className="relative w-full md:w-80">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
                         <input
@@ -154,7 +158,7 @@ export default function ParticipantDatabase() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Cari ID, Tim, Kapten, IGN..."
-                            className="w-full bg-white border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-dark focus:outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-inner"
+                            className="w-full bg-brand-bg-light border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-dark placeholder:text-brand-muted focus:outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-inner"
                         />
                     </div>
                 </div>
@@ -168,38 +172,38 @@ export default function ParticipantDatabase() {
                         </div>
                     ) : participants.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-32 text-brand-muted px-4 text-center">
-                            <Users className="w-12 h-12 mb-3 opacity-20 text-brand-primary" />
-                            <p className="text-sm font-semibold">Tidak Ada Peserta Ditemukan</p>
-                            <p className="text-xs mt-1">Coba sesuaikan filter status atau kata kunci pencarian Koko.</p>
+                            <Users className="w-12 h-12 mb-3 opacity-20 text-brand-primary animate-pulse-slow" />
+                            <p className="text-sm font-black text-brand-dark">Tidak Ada Peserta Ditemukan</p>
+                            <p className="text-xs mt-1 font-medium">Coba sesuaikan filter status atau kata kunci pencarian Koko.</p>
                         </div>
                     ) : (
                         <table className="w-full text-left border-collapse min-w-[1250px]">
                             <thead>
-                                <tr className="bg-brand-bg-light text-[10px] uppercase font-jetbrains text-brand-muted border-b border-brand-border">
-                                    <th className="p-4">Klub / Skuad</th>
-                                    <th className="p-4">Kapten / Akun User</th>
-                                    <th className="p-4">Platform & Game ID</th>
-                                    <th className="p-4">Kontak Info</th>
-                                    <th className="p-4 text-center">Tgl. Daftar</th>
-                                    <th className="p-4 text-center">Status</th>
+                                <tr className="bg-brand-bg-surface text-[10px] uppercase font-jetbrains text-brand-muted border-b border-brand-border tracking-wider">
+                                    <th className="p-4 font-black">Klub / Skuad</th>
+                                    <th className="p-4 font-black">Kapten / Akun User</th>
+                                    <th className="p-4 font-black">Platform & Game ID</th>
+                                    <th className="p-4 font-black">Kontak Info</th>
+                                    <th className="p-4 text-center font-black">Tgl. Daftar</th>
+                                    <th className="p-4 text-center font-black">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-sm font-medium bg-white">
+                            <tbody className="text-sm font-medium bg-brand-bg-light">
                                 {participants.map((p) => (
-                                    <tr key={p.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors group">
+                                    <tr key={p.id} className="border-b border-brand-border hover:bg-brand-bg-surface/50 transition-colors group">
 
                                         {/* KOLOM 1: NAMA TIM MURNI */}
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-brand-dark text-[15px]">{p.teamName}</span>
-                                                <span className="text-[10px] text-brand-muted font-mono truncate max-w-[180px]" title={p.id}>UID: {p.id.split('-')[0]}...</span>
+                                                <span className="font-black text-brand-dark text-[15px] group-hover:text-brand-primary transition-colors">{p.teamName}</span>
+                                                <span className="text-[10px] text-brand-muted font-jetbrains truncate max-w-[180px]" title={p.id}>UID: {p.id.split('-')[0]}...</span>
                                             </div>
                                         </td>
 
                                         {/* KOLOM 2: PROFIL USER (FOTO USER + NAMA) */}
-                                        <td className="p-4 text-slate-700 align-middle">
+                                        <td className="p-4 align-middle">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center shrink-0 overflow-hidden">
+                                                <div className="w-9 h-9 rounded-full bg-brand-primary/5 border border-brand-primary/20 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
                                                     {p.participant?.profilePictureUrl ? (
                                                         <img src={p.participant.profilePictureUrl} alt={`User ${p.leaderName}`} className="w-full h-full object-cover" />
                                                     ) : (
@@ -209,39 +213,53 @@ export default function ParticipantDatabase() {
                                                     )}
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="font-semibold text-[13px]">{p.leaderName}</span>
-                                                    <span className="text-[10px] text-brand-muted flex items-center gap-1 mt-0.5"><MapPin size={10} /> {p.domisili}</span>
+                                                    <span className="font-bold text-[13px] text-brand-dark">{p.leaderName}</span>
+                                                    <span className="text-[10px] text-brand-muted flex items-center gap-1 mt-0.5 font-medium">
+                                                        <MapPin size={10} className="text-brand-primary/60" /> {p.domisili}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </td>
 
                                         {/* KOLOM 3: GAME ID */}
                                         <td className="p-4 align-middle">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="font-mono text-brand-primary font-bold text-xs flex items-center gap-1.5"><Gamepad2 size={12} className="text-slate-400" /> {p.efootballId}</span>
-                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 border border-slate-200 px-2 py-0.5 rounded w-fit">{p.device}</span>
+                                            <div className="flex flex-col gap-1.5">
+                                                <span className="font-jetbrains text-brand-primary font-bold text-xs flex items-center gap-1.5">
+                                                    <Gamepad2 size={13} className="text-brand-muted" /> {p.efootballId}
+                                                </span>
+                                                <span className="text-[9px] font-black text-brand-muted uppercase tracking-widest bg-brand-bg-surface border border-brand-border px-2 py-0.5 rounded-md w-fit">
+                                                    {p.device}
+                                                </span>
                                             </div>
                                         </td>
 
                                         {/* KOLOM 4: KONTAK */}
                                         <td className="p-4 align-middle">
-                                            <div className="flex flex-col gap-1.5 text-xs text-slate-600">
-                                                <span className="flex items-center gap-2 font-mono hover:text-brand-primary cursor-pointer"><Phone size={12} className="text-brand-muted" /> {p.whatsappNumber}</span>
-                                                <span className="flex items-center gap-2 hover:text-brand-primary cursor-pointer"><Instagram size={12} className="text-brand-muted" /> @{p.instagramHandle}</span>
-                                                <span className="flex items-center gap-2 truncate max-w-[150px]" title={p.email}><Mail size={12} className="text-brand-muted shrink-0" /> {p.email}</span>
+                                            <div className="flex flex-col gap-1.5 text-xs text-brand-muted font-medium">
+                                                <span className="flex items-center gap-2 font-jetbrains hover:text-brand-primary cursor-pointer transition-colors">
+                                                    <Phone size={12} className="text-brand-gold" /> {p.whatsappNumber}
+                                                </span>
+                                                <span className="flex items-center gap-2 hover:text-brand-primary cursor-pointer transition-colors">
+                                                    <Instagram size={12} className="text-brand-primary/60" /> @{p.instagramHandle}
+                                                </span>
+                                                <span className="flex items-center gap-2 truncate max-w-[160px] hover:text-brand-primary transition-colors" title={p.email}>
+                                                    <Mail size={12} className="text-brand-primary/60 shrink-0" /> {p.email}
+                                                </span>
                                             </div>
                                         </td>
 
                                         {/* KOLOM 5: TANGGAL */}
-                                        <td className="p-4 text-center font-jetbrains text-slate-500 align-middle text-xs">
+                                        <td className="p-4 text-center font-jetbrains text-brand-muted align-middle text-xs font-bold">
                                             {new Date(p.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
                                         </td>
 
                                         {/* KOLOM 6: STATUS */}
                                         <td className="p-4 text-center align-middle">
-                                            <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ${p.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' :
-                                                    p.status === 'REJECTED' ? 'bg-red-100 text-red-600 border border-red-200' :
-                                                        'bg-amber-100 text-amber-600 border border-amber-200'
+                                            <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm font-jetbrains ${p.status === 'APPROVED'
+                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                                    : p.status === 'REJECTED'
+                                                        ? 'bg-red-50 text-red-600 border border-red-200'
+                                                        : 'bg-amber-50 text-amber-600 border border-amber-200'
                                                 }`}>
                                                 {p.status}
                                             </span>

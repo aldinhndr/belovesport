@@ -9,9 +9,10 @@ import {
     , Instagram, Mail
 } from 'lucide-react';
 import CopyVoucherButton from '@/components/participant/CopyVoucherButton';
-import MatchActionModal from '@/components/tournament/MatchActionModal';
+// 🚀 GANTI IMPORT MODAL LAMA DENGAN MATCH CENTER BARU KITA
+import MatchCenterModal from '@/components/user/MatchCenterModal';
 
-// 🚀 IMPORT UTAL GLOBAL BIAR DRY SEUTUHNYA Ko!
+// IMPORT UTAL GLOBAL
 import { REGISTRATION_STATUS_MAP, MATCH_STATUS_LABEL } from '@/lib/constants';
 
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
@@ -93,7 +94,6 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                             <div className="space-y-6">
                                 <SectionHeader icon={<Users size={14} />} title="Riwayat Registrasi Tim" />
                                 {myTeams.map((team: any) => {
-                                    // 🚀 MENGGUNAKAN MAP GLOBAL YANG DARI CONSTANTS
                                     const statusConfig = (REGISTRATION_STATUS_MAP as any)[team.status] || {
                                         label: team.status, dot: 'bg-brand-muted', text: 'text-brand-dark', bg: 'bg-brand-bg-surface', border: 'border-brand-border', icon: null
                                     };
@@ -116,7 +116,6 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                                                     className="w-full h-full object-cover"
                                                                 />
                                                             ) : (
-                                                                // Fallback jika profilePictureUrl kosong / null
                                                                 <span className="text-xl font-black text-brand-muted uppercase">
                                                                     {team.teamName.charAt(0)}
                                                                 </span>
@@ -146,27 +145,20 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                                     </div>
                                                 </div>
 
-                                                {/* ── GRID DATA UTAMA PENGGUNA (SESUAI SCHEMA DB) ── */}
+                                                {/* ── GRID DATA UTAMA PENGGUNA ── */}
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                                                    {/* 1. Kapten Tim */}
                                                     <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
                                                         <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">Kapten Tim</p>
                                                         <p className="text-xs font-semibold text-brand-dark truncate">{team.leaderName}</p>
                                                     </div>
-
-                                                    {/* 2. WhatsApp */}
                                                     <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
                                                         <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">WhatsApp</p>
                                                         <p className="text-xs font-semibold text-brand-dark truncate">{team.whatsappNumber}</p>
                                                     </div>
-
-                                                    {/* 3. Domisili */}
                                                     <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
                                                         <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">Domisili</p>
                                                         <p className="text-xs font-semibold text-brand-dark truncate">{team.domisili}</p>
                                                     </div>
-
-                                                    {/* 4. Device / Perangkat */}
                                                     <div className="p-3 rounded-xl bg-brand-bg-surface border border-brand-border">
                                                         <p className="text-[9px] uppercase tracking-widest mb-1 font-bold text-brand-muted">Device</p>
                                                         <p className="text-xs font-semibold text-brand-dark truncate uppercase">{team.device}</p>
@@ -175,7 +167,6 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
 
                                                 {/* ── INFORMASI SOSMED & PEMBAYARAN ── */}
                                                 <div className="space-y-2.5">
-                                                    {/* Baris Instagram & Email */}
                                                     <div className="flex flex-col sm:flex-row gap-2.5">
                                                         <div className="flex-1 flex items-center justify-between p-3 rounded-xl bg-brand-bg-surface border border-brand-border text-xs">
                                                             <span className="text-brand-muted flex items-center gap-1.5"><Instagram size={13} /> Instagram</span>
@@ -187,7 +178,6 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                                         </div>
                                                     </div>
 
-                                                    {/* Baris Status Pembayaran */}
                                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3.5 rounded-xl bg-brand-bg-surface border border-brand-border gap-3">
                                                         <div className="flex items-center gap-2.5">
                                                             <CreditCard size={14} className="text-brand-muted" />
@@ -218,7 +208,7 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                     </div>
                 )}
 
-                {/* ── TAB 3: JADWAL & LIVE LAPOR SKOR MATCH KOKO ── */}
+                {/* ── TAB 3: JADWAL & LIVE MATCH CENTER KOKO ── */}
                 {activeTab === 'MATCHES' && (
                     <div className="space-y-4">
                         <SectionHeader icon={<Calendar size={14} />} title="Riwayat & Jadwal Pertandingan" />
@@ -259,7 +249,7 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                             : null;
 
                                 return (
-                                    <div key={match.id} className="rounded-xl p-4 sm:p-5 transition-all bg-white border border-brand-border shadow-sm">
+                                    <div key={match.id} className="rounded-xl p-4 sm:p-5 transition-all bg-white border border-brand-border shadow-sm group">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -267,7 +257,6 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                                         {match.stage} · Match #{match.matchNumber}
                                                     </span>
                                                     <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-brand-bg-surface text-brand-muted border border-brand-border">
-                                                        {/* 🚀 MENGGUNAKAN LABEL DARI CONSTANTS */}
                                                         {(MATCH_STATUS_LABEL as any)[match.matchStatus] || match.matchStatus}
                                                     </span>
                                                     {resultConfig && (
@@ -302,14 +291,14 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedMatchId(match.id)}
-                                                        className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-brand-gold/10 border border-brand-gold/40 text-brand-primary"
+                                                        className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] uppercase font-black font-jetbrains bg-brand-primary hover:bg-brand-secondary text-white shadow-sm transition-all group-hover:scale-105 tracking-widest"
                                                     >
-                                                        Lapor Skor <ChevronRight size={13} />
+                                                        <MessageCircle size={14} /> Match Center
                                                     </button>
                                                 )}
                                                 {isWaiting && (
                                                     <span className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700">
-                                                        <Clock size={12} /> In Review
+                                                        <Clock size={12} /> Menunggu Admin
                                                     </span>
                                                 )}
                                             </div>
@@ -322,9 +311,9 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                 )}
             </div>
 
-            {/* MODAL LAUNCHER ENGINE */}
+            {/* 🚀 MODAL LAUNCHER ENGINE: MATCH CENTER */}
             {selectedMatchId && (
-                <MatchActionModal
+                <MatchCenterModal
                     matchId={selectedMatchId}
                     onClose={() => setSelectedMatchId(null)}
                     onSuccess={() => window.location.reload()}

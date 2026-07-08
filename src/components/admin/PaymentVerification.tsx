@@ -91,6 +91,7 @@ export default function PaymentVerification() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* HEADER MODUL */}
             <div className="pb-4 border-b border-brand-border">
                 <h2 className="text-2xl font-black uppercase font-jetbrains text-brand-dark tracking-tight">
                     Modul A-02: <span className="text-brand-primary">Verifikasi Pembayaran</span>
@@ -98,10 +99,15 @@ export default function PaymentVerification() {
                 <p className="text-brand-muted text-sm mt-1">Review bukti transfer, verifikasi validitas peserta, dan amankan slot pendaftaran.</p>
             </div>
 
-            <div className="bg-brand-bg-surface border border-brand-border rounded-3xl overflow-hidden shadow-sm">
-                <div className="p-4 bg-brand-bg-light border-b border-brand-border flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <h3 className="text-sm font-black font-jetbrains text-brand-dark uppercase tracking-wider">
-                        Antrean Verifikasi ({registrations.length})
+            <div className="bg-brand-bg-light border border-brand-border rounded-3xl overflow-hidden shadow-sm">
+
+                {/* TOOLBAR ATAS: SEARCH */}
+                <div className="p-4 bg-brand-bg-surface/60 border-b border-brand-border flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h3 className="text-sm font-black font-jetbrains text-brand-dark uppercase tracking-wider flex items-center gap-2">
+                        Antrean Verifikasi
+                        <span className="bg-brand-primary/10 text-brand-primary border border-brand-primary/20 px-2 py-0.5 rounded-md text-[10px]">
+                            {registrations.length} TIM
+                        </span>
                     </h3>
                     <div className="relative w-full sm:w-72">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
@@ -110,7 +116,7 @@ export default function PaymentVerification() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Cari Nama Tim / Kapten..."
-                            className="w-full bg-white border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-dark focus:outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all"
+                            className="w-full bg-brand-bg-light border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-brand-dark placeholder:text-brand-muted focus:outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-inner"
                         />
                     </div>
                 </div>
@@ -123,34 +129,36 @@ export default function PaymentVerification() {
                         </div>
                     ) : filteredRegistrations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-[300px] text-brand-muted px-4 text-center">
-                            <Check className="w-12 h-12 mb-3 text-emerald-400 opacity-50" />
-                            <p className="text-sm font-semibold">Semua bersih, Ko!</p>
-                            <p className="text-xs mt-1">Tidak ada antrean pendaftaran yang menunggu verifikasi saat ini.</p>
+                            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
+                                <Check className="w-8 h-8 text-emerald-500" />
+                            </div>
+                            <p className="text-sm font-black text-brand-dark">Semua bersih, Ko!</p>
+                            <p className="text-xs mt-1 font-medium">Tidak ada antrean pendaftaran yang menunggu verifikasi saat ini.</p>
                         </div>
                     ) : (
-                        <div className="flex flex-col">
-                            {/* TABEL HEADER (DIV BASED UNTUK ACCORDION) */}
-                            <div className="grid grid-cols-12 gap-4 bg-brand-bg-light p-4 text-[10px] font-black uppercase font-jetbrains text-brand-muted border-b border-brand-border">
+                        <div className="flex flex-col min-w-[700px]">
+                            {/* TABEL HEADER */}
+                            <div className="grid grid-cols-12 gap-4 bg-brand-bg-surface p-4 text-[10px] font-black uppercase font-jetbrains text-brand-muted border-b border-brand-border tracking-wider">
                                 <div className="col-span-1 text-center">Detail</div>
                                 <div className="col-span-4">Klub / Tim</div>
                                 <div className="col-span-3">Metode</div>
-                                <div className="col-span-4 text-right">Aksi Verifikasi</div>
+                                <div className="col-span-4 text-right pr-2">Aksi Verifikasi</div>
                             </div>
 
                             {/* BODY ROWS */}
                             {filteredRegistrations.map((reg) => (
-                                <div key={reg.id} className="flex flex-col border-b border-brand-border bg-white hover:bg-slate-50 transition-colors">
+                                <div key={reg.id} className="flex flex-col border-b border-brand-border bg-brand-bg-light hover:bg-brand-bg-surface/50 transition-colors">
                                     {/* BARIS UTAMA (Bisa Diklik) */}
-                                    <div className="grid grid-cols-12 gap-4 p-4 items-center cursor-pointer" onClick={() => toggleRow(reg.id)}>
-                                        <div className="col-span-1 flex justify-center text-brand-primary">
+                                    <div className="grid grid-cols-12 gap-4 p-4 items-center cursor-pointer group" onClick={() => toggleRow(reg.id)}>
+                                        <div className="col-span-1 flex justify-center text-brand-primary/40 group-hover:text-brand-primary transition-colors">
                                             {expandedRow === reg.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                         </div>
                                         <div className="col-span-4 flex flex-col">
-                                            <span className="font-bold text-sm text-brand-dark">{reg.teamName}</span>
-                                            <span className="text-xs text-brand-muted truncate mt-0.5">{reg.leaderName}</span>
+                                            <span className="font-black text-sm text-brand-dark group-hover:text-brand-primary transition-colors">{reg.teamName}</span>
+                                            <span className="text-xs text-brand-muted truncate mt-0.5 font-medium">{reg.leaderName}</span>
                                         </div>
                                         <div className="col-span-3">
-                                            <span className="inline-flex px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[10px] font-bold font-jetbrains text-slate-600">
+                                            <span className="inline-flex px-2.5 py-1 bg-brand-bg-surface border border-brand-border rounded-md text-[10px] font-bold font-jetbrains text-brand-muted uppercase">
                                                 {reg.paymentMethod || 'MANUAL'}
                                             </span>
                                         </div>
@@ -158,87 +166,87 @@ export default function PaymentVerification() {
                                             <button
                                                 disabled={isProcessing === reg.id}
                                                 onClick={() => handleUpdateStatus(reg.id, 'approve')}
-                                                className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-black flex items-center gap-1.5 disabled:opacity-50 transition-all text-xs tracking-wider shadow-sm"
+                                                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black flex items-center gap-1.5 disabled:opacity-50 transition-all text-[11px] tracking-wider shadow-sm font-jetbrains"
                                             >
-                                                {isProcessing === reg.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} APPROVE
+                                                {isProcessing === reg.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={3} />} APPROVE
                                             </button>
                                             <button
                                                 disabled={isProcessing === reg.id}
                                                 onClick={() => handleUpdateStatus(reg.id, 'reject')}
-                                                className="px-3 py-1.5 rounded-lg bg-white border-2 border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white font-black flex items-center gap-1.5 disabled:opacity-50 transition-all text-xs tracking-wider"
+                                                className="px-4 py-2 rounded-xl bg-brand-bg-light border border-brand-primary text-brand-primary hover:bg-brand-primary/5 font-black flex items-center gap-1.5 disabled:opacity-50 transition-all text-[11px] tracking-wider font-jetbrains"
                                             >
-                                                <XCircle size={14} /> REJECT
+                                                <XCircle size={14} strokeWidth={2.5} /> REJECT
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* BARIS DETAIL EXPANDABLE (MUNCUL JIKA DIKLIK) */}
+                                    {/* BARIS DETAIL EXPANDABLE */}
                                     {expandedRow === reg.id && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 border-t border-dashed border-slate-200">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-brand-bg-surface/80 border-t border-brand-border">
 
                                             {/* KOLOM KIRI: DATA LENGKAP */}
                                             <div className="space-y-4">
-                                                <h4 className="text-xs font-black font-jetbrains text-brand-dark uppercase tracking-widest mb-3 border-b border-slate-200 pb-2">Informasi Peserta</h4>
+                                                <h4 className="text-xs font-black font-jetbrains text-brand-primary uppercase tracking-widest mb-3 border-b border-brand-border pb-2">Informasi Peserta</h4>
 
-                                                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                                                <div className="grid grid-cols-2 gap-y-4 gap-x-4 text-sm">
                                                     <div>
-                                                        <p className="text-[10px] text-brand-muted uppercase font-bold">Email</p>
-                                                        <p className="font-medium text-brand-dark">{reg.email}</p>
+                                                        <p className="text-[10px] text-brand-muted uppercase font-bold font-jetbrains mb-0.5">Email</p>
+                                                        <p className="font-semibold text-brand-dark">{reg.email}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] text-brand-muted uppercase font-bold">WhatsApp</p>
-                                                        <p className="font-medium text-brand-dark">{reg.whatsappNumber}</p>
+                                                        <p className="text-[10px] text-brand-muted uppercase font-bold font-jetbrains mb-0.5">WhatsApp</p>
+                                                        <p className="font-semibold text-brand-dark">{reg.whatsappNumber}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] text-brand-muted uppercase font-bold">Game ID</p>
-                                                        <p className="font-mono text-brand-primary font-bold">{reg.efootballId}</p>
+                                                        <p className="text-[10px] text-brand-muted uppercase font-bold font-jetbrains mb-0.5">Game ID</p>
+                                                        <p className="font-mono text-brand-primary font-black bg-brand-primary/5 px-2 py-0.5 rounded w-fit">{reg.efootballId}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] text-brand-muted uppercase font-bold">Instagram</p>
-                                                        <p className="font-medium text-brand-dark">@{reg.instagramHandle}</p>
+                                                        <p className="text-[10px] text-brand-muted uppercase font-bold font-jetbrains mb-0.5">Instagram</p>
+                                                        <p className="font-semibold text-brand-dark">@{reg.instagramHandle}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] text-brand-muted uppercase font-bold">Domisili</p>
-                                                        <p className="font-medium text-brand-dark">{reg.domisili}</p>
+                                                        <p className="text-[10px] text-brand-muted uppercase font-bold font-jetbrains mb-0.5">Domisili</p>
+                                                        <p className="font-semibold text-brand-dark">{reg.domisili}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] text-brand-muted uppercase font-bold">Device</p>
-                                                        <p className="font-medium text-brand-dark uppercase">{reg.device}</p>
+                                                        <p className="text-[10px] text-brand-muted uppercase font-bold font-jetbrains mb-0.5">Device</p>
+                                                        <p className="font-semibold text-brand-dark uppercase">{reg.device}</p>
                                                     </div>
                                                 </div>
 
-                                                <p className="text-[10px] text-brand-muted pt-2 border-t border-slate-200">
-                                                    Mendaftar pada: {new Date(reg.createdAt).toLocaleString('id-ID')}
+                                                <p className="text-[10px] text-brand-muted pt-3 border-t border-brand-border font-medium">
+                                                    Waktu Daftar: <span className="text-brand-dark font-bold">{new Date(reg.createdAt).toLocaleString('id-ID')}</span>
                                                 </p>
                                             </div>
 
                                             {/* KOLOM KANAN: BUKTI PEMBAYARAN */}
-                                            <div className="space-y-3">
-                                                <h4 className="text-xs font-black font-jetbrains text-brand-dark uppercase tracking-widest mb-3 border-b border-slate-200 pb-2 flex items-center justify-between">
+                                            <div className="space-y-3 h-full flex flex-col">
+                                                <h4 className="text-xs font-black font-jetbrains text-brand-primary uppercase tracking-widest mb-3 border-b border-brand-border pb-2 flex items-center justify-between">
                                                     Bukti Transfer
-                                                    <span className="text-[9px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-200">
+                                                    <span className="text-[9px] bg-brand-gold/10 text-brand-gold px-2 py-1 rounded border border-brand-gold/30 shadow-sm font-black">
                                                         HARAP CEK MUTASI
                                                     </span>
                                                 </h4>
 
                                                 {reg.paymentProofUrl ? (
                                                     <div
-                                                        className="relative group w-full h-48 bg-slate-200 rounded-xl overflow-hidden border border-slate-300 cursor-pointer shadow-sm"
+                                                        className="relative group flex-1 min-h-[160px] bg-brand-bg-light rounded-xl overflow-hidden border border-brand-border cursor-pointer shadow-sm p-1"
                                                         onClick={() => setPreviewImage(reg.paymentProofUrl)}
                                                     >
                                                         <img
                                                             src={reg.paymentProofUrl}
                                                             alt="Bukti Transfer"
-                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                            className="w-full h-full object-cover rounded-lg group-hover:opacity-80 transition-opacity duration-300"
                                                         />
-                                                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="absolute inset-0 bg-brand-dark/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl m-1">
                                                             <Eye size={24} className="text-white mb-2" />
-                                                            <span className="text-white text-xs font-bold font-jetbrains">KLIK UNTUK PERBESAR</span>
+                                                            <span className="text-white text-xs font-black font-jetbrains bg-brand-primary/80 px-3 py-1 rounded-md">PERBESAR</span>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="w-full h-48 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-brand-muted">
-                                                        <ImageIcon size={32} className="mb-2 opacity-50" />
+                                                    <div className="w-full flex-1 min-h-[160px] bg-brand-bg-light rounded-xl border-2 border-dashed border-brand-border flex flex-col items-center justify-center text-brand-muted">
+                                                        <ImageIcon size={32} className="mb-2 opacity-30 text-brand-primary" />
                                                         <p className="text-xs font-semibold">Tidak Ada Bukti Gambar</p>
                                                     </div>
                                                 )}
@@ -253,23 +261,23 @@ export default function PaymentVerification() {
                 </div>
             </div>
 
-            {/* MODAL PREVIEW GAMBAR PENUH */}
+            {/* MODAL PREVIEW GAMBAR PENUH (LIGHTBOX) */}
             {previewImage && (
                 <div
-                    className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-[100] bg-brand-dark/90 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200"
                     onClick={() => setPreviewImage(null)}
                 >
-                    <div className="relative max-w-3xl w-full max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
+                    <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
                         <button
                             onClick={() => setPreviewImage(null)}
-                            className="absolute -top-12 right-0 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                            className="absolute -top-12 right-0 p-2 bg-white/10 hover:bg-brand-primary text-white rounded-full transition-all border border-white/20"
                         >
-                            <XCircle size={32} />
+                            <XCircle size={28} />
                         </button>
                         <img
                             src={previewImage}
                             alt="Bukti Transfer Penuh"
-                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-brand-glow border border-white/10"
                         />
                     </div>
                 </div>
