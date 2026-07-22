@@ -28,7 +28,7 @@
  * dirancang — cari komentar ini untuk semua titik yang perlu dicek.
  */
 
-import { useState } from 'react';
+import { useState, use } from 'react'; // 1. Impor 'use' dari React
 import Link from 'next/link';
 import useSWR from 'swr';
 import {
@@ -47,6 +47,12 @@ import {
 // ─────────────────────────────────────────────────────────
 // Tipe data
 // ─────────────────────────────────────────────────────────
+
+interface PageProps {
+    params: Promise<{
+        matchId: string;
+    }>;
+}
 
 interface TeamRef {
     teamName: string;
@@ -130,11 +136,13 @@ const fetcher = (url: string) =>
         return res.json();
     });
 
-export default function MatchCenterPage({ params }: { params: { matchId: string } }) {
+export default function MatchCenterPage({ params }: PageProps) {
+    // 2. Resolve Promise params menggunakan React use() hook
+    const resolvedParams = use(params);
     const [activeLeg, setActiveLeg] = useState<1 | 2>(1);
 
     const { data: resData, error, isLoading, mutate } = useSWR(
-        `/api/tournament/match/${params.matchId}`,
+        `/api/tournament/match/${resolvedParams.matchId}`,
         fetcher,
         { refreshInterval: 15000, revalidateOnFocus: true }
     );
@@ -290,8 +298,8 @@ function MatchCenterContent({
                             type="button"
                             onClick={() => setActiveLeg(leg as 1 | 2)}
                             className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${activeLeg === leg
-                                    ? 'bg-[#561b1d] text-[#d47f7e] shadow-sm'
-                                    : 'bg-white border border-[#d9c1c0] text-[#534342] hover:bg-[#fff0ef]'
+                                ? 'bg-[#561b1d] text-[#d47f7e] shadow-sm'
+                                : 'bg-white border border-[#d9c1c0] text-[#534342] hover:bg-[#fff0ef]'
                                 }`}
                         >
                             Leg {leg}
@@ -400,7 +408,6 @@ function MatchCenterContent({
                             ))}
                         </div>
                     ) : (
-                        // Empty state jujur — bukan gambar placeholder yang terlihat seperti bukti asli
                         <div className="aspect-video rounded-2xl border-2 border-dashed border-[#d9c1c0] bg-white flex flex-col items-center justify-center gap-2 text-center px-6">
                             <ImageOff size={32} className="text-[#8f4a45]/40" aria-hidden />
                             <p className="text-sm font-bold text-[#534342]">Belum ada bukti diunggah</p>
@@ -456,7 +463,6 @@ function MatchCenterContent({
                             <div className="h-1.5 bg-gradient-to-r from-[#561b1d] via-[#ffba48] to-[#561b1d]" />
                         </div>
                     ) : (
-                        // Empty state jujur — tidak menampilkan angka 0 yang bisa disalahartikan sebagai hasil asli
                         <div className="rounded-2xl border-2 border-dashed border-[#d9c1c0] bg-white flex flex-col items-center justify-center gap-2 text-center px-6 py-14">
                             <Circle size={32} className="text-[#8f4a45]/40" aria-hidden />
                             <p className="text-sm font-bold text-[#534342]">Statistik belum diinput</p>
@@ -466,7 +472,6 @@ function MatchCenterContent({
                         </div>
                     )}
 
-                    {/* Insight — hanya tampil kalau statistik tersedia, karena tanpa data tidak ada insight jujur untuk ditampilkan */}
                     {currentStats && (
                         <div className="bg-[#f4e5e4] rounded-2xl p-4 border-l-4 border-[#ffba48] flex items-start gap-3">
                             <Lightbulb size={18} className="text-[#ffba48] mt-0.5 shrink-0" aria-hidden />
@@ -517,8 +522,7 @@ function StatRow({
 }
 
 // ─────────────────────────────────────────────────────────
-// Insight otomatis sederhana — dibangun dari data nyata yang tersedia,
-// bukan teks generik statis (kalau statistik kosong, fungsi ini tidak dipanggil sama sekali)
+// Insight otomatis sederhana
 // ─────────────────────────────────────────────────────────
 
 function buildInsight(stats: MatchStats, homeTeam: string, awayTeam: string): string {
