@@ -398,7 +398,12 @@ function PremiumNavbar() {
               href="https://forms.gle/chyLHXbWgoTtPxpP6"
               target="_blank"
               rel="noopener noreferrer"
+              className="inline-block"
             >
+              <SignupButton variant="primary" className="!px-5 !py-2.5 rounded-full shadow-lg shadow-black/20">
+                <Zap className="h-3.5 w-3.5" />
+                <span className="text-xs font-extrabold uppercase tracking-wider">Daftar Tim</span>
+              </SignupButton>
             </a>
           </div>
 
@@ -407,7 +412,6 @@ function PremiumNavbar() {
             <MobileNav />
           </div>
         </div>
-
       </div>
     </header>
   )
