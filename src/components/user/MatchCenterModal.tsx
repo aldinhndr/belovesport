@@ -2,7 +2,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, MessageSquare, Swords, Upload, Send, Loader2, Info, CheckCircle2 } from 'lucide-react';
+import { X, MessageSquare, Swords, Upload, Send, Loader2, Info, CheckCircle2, ImageIcon, XCircle } from 'lucide-react';
+
+// TODO(Ko): Pastikan client Supabase browser sudah ada di path ini.
+// Kalau nama file/exportnya beda, sesuaikan import berikut.
+// import { supabase } from '@/lib/supabase/client';
+
+// TODO(Ko): Ganti dengan nama bucket Supabase Storage yang sebenarnya dipakai
+// untuk paymentProofUrl/profilePictureUrl agar konsisten dengan bucket yang sudah ada.
+const MATCH_PROOF_BUCKET = 'match-proofs';
 
 interface MatchCenterModalProps {
     matchId: string;
@@ -39,8 +47,20 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
         awayScoreLeg1: '',
         homeScoreLeg2: '',
         awayScoreLeg2: '',
-        screenshotUrl: ''
+        screenshotUrlLeg1: '',
+        screenshotUrlLeg2: ''
     });
+
+    // State Upload Bukti Screenshot — terpisah per leg, karena knockout = 2 pertandingan terpisah
+    type LegKey = 'leg1' | 'leg2';
+    const [proofFiles, setProofFiles] = useState<Record<LegKey, File | null>>({ leg1: null, leg2: null });
+    const [proofPreviewUrls, setProofPreviewUrls] = useState<Record<LegKey, string | null>>({ leg1: null, leg2: null });
+    const [isUploadingProof, setIsUploadingProof] = useState<Record<LegKey, boolean>>({ leg1: false, leg2: false });
+    const [isDraggingProof, setIsDraggingProof] = useState<Record<LegKey, boolean>>({ leg1: false, leg2: false });
+    const fileInputRefs = {
+        leg1: useRef<HTMLInputElement>(null),
+        leg2: useRef<HTMLInputElement>(null),
+    };
 
     // State Chat
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -48,6 +68,69 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const isGroupStage = matchDetails?.stage === 'GROUP';
+
+    const MAX_PROOF_SIZE_MB = 5;
+    const ACCEPTED_PROOF_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
+
+    const handleProofFile = (leg: LegKey, file: File | null) => {
+        if (!file) return;
+        if (!ACCEPTED_PROOF_TYPES.includes(file.type)) {
+            alert('Format file harus JPG atau PNG.');
+            return;
+        }
+        if (file.size > MAX_PROOF_SIZE_MB * 1024 * 1024) {
+            alert(`Ukuran file maksimal ${MAX_PROOF_SIZE_MB}MB.`);
+            return;
+        }
+        setProofFiles(prev => ({ ...prev, [leg]: file }));
+        setProofPreviewUrls(prev => ({ ...prev, [leg]: URL.createObjectURL(file) }));
+        // Reset URL lama kalau sebelumnya ada hasil upload untuk leg ini
+        setScoreData(prev => ({ ...prev, [leg === 'leg1' ? 'screenshotUrlLeg1' : 'screenshotUrlLeg2']: '' }));
+    };
+
+    const handleRemoveProof = (leg: LegKey) => {
+        setProofFiles(prev => ({ ...prev, [leg]: null }));
+        setProofPreviewUrls(prev => {
+            if (prev[leg]) URL.revokeObjectURL(prev[leg] as string);
+            return { ...prev, [leg]: null };
+        });
+        setScoreData(prev => ({ ...prev, [leg === 'leg1' ? 'screenshotUrlLeg1' : 'screenshotUrlLeg2']: '' }));
+        if (fileInputRefs[leg].current) fileInputRefs[leg].current!.value = '';
+    };
+
+    const handleDrop = (leg: LegKey) => (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDraggingProof(prev => ({ ...prev, [leg]: false }));
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleProofFile(leg, file);
+    };
+
+    // Upload satu bukti (per leg) ke Supabase Storage, kembalikan public URL
+    const uploadProofToStorage = async (leg: LegKey): Promise<string> => {
+        const file = proofFiles[leg];
+        if (!file) throw new Error(`Belum ada file bukti ${leg === 'leg1' ? 'Leg 1' : 'Leg 2'} yang dipilih.`);
+
+        setIsUploadingProof(prev => ({ ...prev, [leg]: true }));
+        try {
+            // TODO(Ko): Aktifkan implementasi asli setelah import supabase client dikonfirmasi.
+            // const fileExt = file.name.split('.').pop();
+            // const filePath = `${matchId}/${leg}-${Date.now()}.${fileExt}`;
+            // const { error: uploadError } = await supabase.storage
+            //     .from(MATCH_PROOF_BUCKET)
+            //     .upload(filePath, file, { cacheControl: '3600', upsert: false });
+            // if (uploadError) throw uploadError;
+            // const { data: publicUrlData } = supabase.storage
+            //     .from(MATCH_PROOF_BUCKET)
+            //     .getPublicUrl(filePath);
+            // return publicUrlData.publicUrl;
+
+            // Placeholder sementara sampai koneksi Supabase Storage dikonfirmasi:
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            return proofPreviewUrls[leg] || '';
+        } finally {
+            setIsUploadingProof(prev => ({ ...prev, [leg]: false }));
+        }
+    };
 
     // 1. FETCH DATA MATCH & CHAT (Mockup Integrasi Awal)
     useEffect(() => {
@@ -90,11 +173,44 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
         }
     }, [chatMessages, activeTab]);
 
+    // Bersihkan object URL preview saat komponen unmount agar tidak bocor memori
+    useEffect(() => {
+        return () => {
+            if (proofPreviewUrls.leg1) URL.revokeObjectURL(proofPreviewUrls.leg1);
+            if (proofPreviewUrls.leg2) URL.revokeObjectURL(proofPreviewUrls.leg2);
+        };
+    }, [proofPreviewUrls]);
+
     const handleScoreSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Bukti Leg 1 wajib selalu ada
+        if (!proofFiles.leg1 && !scoreData.screenshotUrlLeg1) {
+            alert('Wajib melampirkan screenshot bukti hasil Leg 1.');
+            return;
+        }
+
+        // Leg 2 cuma wajib kalau bukan fase grup DAN skornya sudah diisi
+        const leg2ScoreFilled = scoreData.homeScoreLeg2 !== '' || scoreData.awayScoreLeg2 !== '';
+        if (!isGroupStage && leg2ScoreFilled && !proofFiles.leg2 && !scoreData.screenshotUrlLeg2) {
+            alert('Skor Leg 2 sudah diisi — wajib lampirkan screenshot bukti hasil Leg 2 juga.');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
+            let screenshotUrlLeg1 = scoreData.screenshotUrlLeg1;
+            if (proofFiles.leg1) {
+                screenshotUrlLeg1 = await uploadProofToStorage('leg1');
+            }
+
+            let screenshotUrlLeg2 = scoreData.screenshotUrlLeg2;
+            if (proofFiles.leg2) {
+                screenshotUrlLeg2 = await uploadProofToStorage('leg2');
+            }
+
             // TODO: Integrasikan ke endpoint POST /api/user/match-center/${matchId}/score
+            // Sertakan `screenshotUrlLeg1` dan (kalau ada) `screenshotUrlLeg2` di body request.
             await new Promise(resolve => setTimeout(resolve, 1500)); // Simulasi delay
             alert('Skor berhasil dikirim ke Admin untuk diverifikasi!');
             onSuccess();
@@ -165,8 +281,8 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
                             <button
                                 onClick={() => setActiveTab('SCORE')}
                                 className={`flex-1 py-4 text-xs font-black font-jetbrains uppercase tracking-widest transition-all border-b-2 flex items-center justify-center gap-2 ${activeTab === 'SCORE'
-                                        ? 'border-brand-primary text-brand-primary bg-brand-primary/5'
-                                        : 'border-transparent text-brand-muted hover:text-brand-dark hover:bg-brand-bg-surface'
+                                    ? 'border-brand-primary text-brand-primary bg-brand-primary/5'
+                                    : 'border-transparent text-brand-muted hover:text-brand-dark hover:bg-brand-bg-surface'
                                     }`}
                             >
                                 <Upload size={16} /> Lapor Skor
@@ -174,8 +290,8 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
                             <button
                                 onClick={() => setActiveTab('CHAT')}
                                 className={`flex-1 py-4 text-xs font-black font-jetbrains uppercase tracking-widest transition-all border-b-2 flex items-center justify-center gap-2 ${activeTab === 'CHAT'
-                                        ? 'border-brand-primary text-brand-primary bg-brand-primary/5'
-                                        : 'border-transparent text-brand-muted hover:text-brand-dark hover:bg-brand-bg-surface'
+                                    ? 'border-brand-primary text-brand-primary bg-brand-primary/5'
+                                    : 'border-transparent text-brand-muted hover:text-brand-dark hover:bg-brand-bg-surface'
                                     }`}
                             >
                                 <MessageSquare size={16} /> Ruang Chat
@@ -188,7 +304,7 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
                                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 mb-6">
                                     <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
                                     <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                                        Pastikan skor yang diinput sesuai dengan hasil pertandingan. <b className="font-black">Lampirkan tautan screenshot</b> hasil akhir sebagai bukti validasi admin.
+                                        Pastikan skor yang diinput sesuai dengan hasil pertandingan. <b className="font-black">Unggah screenshot</b> untuk tiap leg sebagai bukti validasi admin.
                                     </p>
                                 </div>
 
@@ -213,20 +329,91 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
                                         <h4 className="text-xs font-black font-jetbrains text-brand-primary uppercase tracking-widest text-center border-b border-brand-border pb-2">
                                             Skor {isGroupStage ? 'Pertandingan' : 'Leg 1'}
                                         </h4>
-                                        <div className="flex justify-center items-center gap-6">
+                                        <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[10px] font-bold text-brand-muted uppercase tracking-tight text-center truncate">
+                                                    {matchDetails?.homeTeam.teamName}
+                                                </label>
+                                                <div className="relative group">
+                                                    <input
+                                                        type="number" min="0" required
+                                                        value={scoreData.homeScoreLeg1}
+                                                        onChange={e => setScoreData({ ...scoreData, homeScoreLeg1: e.target.value })}
+                                                        className="w-full h-24 text-center text-4xl font-black font-jetbrains text-brand-primary bg-white border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-gold/30 focus:border-brand-gold focus:shadow-[0_0_15px_rgba(252,179,53,0.15)] outline-none transition-all"
+                                                    />
+                                                    <span className="absolute right-3 bottom-2 text-[9px] font-bold uppercase text-brand-muted/40">Goals</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[10px] font-bold text-brand-muted uppercase tracking-tight text-center truncate">
+                                                    {matchDetails?.awayTeam.teamName}
+                                                </label>
+                                                <div className="relative group">
+                                                    <input
+                                                        type="number" min="0" required
+                                                        value={scoreData.awayScoreLeg1}
+                                                        onChange={e => setScoreData({ ...scoreData, awayScoreLeg1: e.target.value })}
+                                                        className="w-full h-24 text-center text-4xl font-black font-jetbrains text-brand-primary bg-white border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-gold/30 focus:border-brand-gold focus:shadow-[0_0_15px_rgba(252,179,53,0.15)] outline-none transition-all"
+                                                    />
+                                                    <span className="absolute right-3 bottom-2 text-[9px] font-bold uppercase text-brand-muted/40">Goals</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* BUKTI SCREENSHOT LEG 1 */}
+                                        <div className="pt-2">
+                                            <label className="block text-[10px] font-black font-jetbrains uppercase text-brand-dark mb-2">
+                                                Bukti Hasil {isGroupStage ? 'Pertandingan' : 'Leg 1'}
+                                            </label>
+
                                             <input
-                                                type="number" min="0" required
-                                                value={scoreData.homeScoreLeg1}
-                                                onChange={e => setScoreData({ ...scoreData, homeScoreLeg1: e.target.value })}
-                                                className="w-16 h-14 text-center text-xl font-black font-jetbrains text-brand-dark border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-primary/20 focus:border-brand-primary outline-none"
+                                                ref={fileInputRefs.leg1}
+                                                type="file"
+                                                accept="image/png,image/jpeg,image/jpg"
+                                                className="hidden"
+                                                onChange={e => handleProofFile('leg1', e.target.files?.[0] || null)}
                                             />
-                                            <span className="text-brand-muted font-black">-</span>
-                                            <input
-                                                type="number" min="0" required
-                                                value={scoreData.awayScoreLeg1}
-                                                onChange={e => setScoreData({ ...scoreData, awayScoreLeg1: e.target.value })}
-                                                className="w-16 h-14 text-center text-xl font-black font-jetbrains text-brand-dark border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-primary/20 focus:border-brand-primary outline-none"
-                                            />
+
+                                            {proofPreviewUrls.leg1 ? (
+                                                <div className="relative rounded-xl border border-brand-border overflow-hidden bg-white">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={proofPreviewUrls.leg1}
+                                                        alt={`Preview bukti hasil ${isGroupStage ? 'pertandingan' : 'Leg 1'}`}
+                                                        className="w-full max-h-56 object-contain bg-white"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveProof('leg1')}
+                                                        className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 text-red-500 hover:bg-red-50 shadow-sm transition-colors"
+                                                    >
+                                                        <XCircle size={18} />
+                                                    </button>
+                                                    <div className="px-3 py-2 flex items-center gap-2 border-t border-brand-border bg-white">
+                                                        <ImageIcon size={14} className="text-brand-muted shrink-0" />
+                                                        <span className="text-xs text-brand-dark truncate">{proofFiles.leg1?.name}</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    onClick={() => fileInputRefs.leg1.current?.click()}
+                                                    onDragOver={e => { e.preventDefault(); setIsDraggingProof(prev => ({ ...prev, leg1: true })); }}
+                                                    onDragLeave={() => setIsDraggingProof(prev => ({ ...prev, leg1: false }))}
+                                                    onDrop={handleDrop('leg1')}
+                                                    className={`w-full border-2 border-dashed rounded-xl p-6 bg-white transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer group ${isDraggingProof.leg1
+                                                        ? 'border-brand-gold bg-brand-gold/5 shadow-[0_0_15px_rgba(252,179,53,0.15)]'
+                                                        : 'border-brand-border hover:bg-brand-bg-surface'
+                                                        }`}
+                                                >
+                                                    <div className="w-10 h-10 rounded-full bg-brand-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <Upload size={20} className="text-brand-primary" />
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="font-semibold text-xs text-brand-dark">Upload Screenshot</p>
+                                                        <p className="text-[9px] text-brand-muted mt-0.5">JPG/PNG · maks 5MB</p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -236,43 +423,103 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
                                             <h4 className="text-xs font-black font-jetbrains text-brand-primary uppercase tracking-widest text-center border-b border-brand-border pb-2">
                                                 Skor Leg 2 (Opsional jika belum main)
                                             </h4>
-                                            <div className="flex justify-center items-center gap-6">
+                                            <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-[10px] font-bold text-brand-muted uppercase tracking-tight text-center truncate">
+                                                        {matchDetails?.homeTeam.teamName}
+                                                    </label>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="number" min="0"
+                                                            value={scoreData.homeScoreLeg2}
+                                                            onChange={e => setScoreData({ ...scoreData, homeScoreLeg2: e.target.value })}
+                                                            className="w-full h-24 text-center text-4xl font-black font-jetbrains text-brand-primary bg-white border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-gold/30 focus:border-brand-gold focus:shadow-[0_0_15px_rgba(252,179,53,0.15)] outline-none transition-all"
+                                                        />
+                                                        <span className="absolute right-3 bottom-2 text-[9px] font-bold uppercase text-brand-muted/40">Goals</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-[10px] font-bold text-brand-muted uppercase tracking-tight text-center truncate">
+                                                        {matchDetails?.awayTeam.teamName}
+                                                    </label>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="number" min="0"
+                                                            value={scoreData.awayScoreLeg2}
+                                                            onChange={e => setScoreData({ ...scoreData, awayScoreLeg2: e.target.value })}
+                                                            className="w-full h-24 text-center text-4xl font-black font-jetbrains text-brand-primary bg-white border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-gold/30 focus:border-brand-gold focus:shadow-[0_0_15px_rgba(252,179,53,0.15)] outline-none transition-all"
+                                                        />
+                                                        <span className="absolute right-3 bottom-2 text-[9px] font-bold uppercase text-brand-muted/40">Goals</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* BUKTI SCREENSHOT LEG 2 */}
+                                            <div className="pt-2">
+                                                <label className="block text-[10px] font-black font-jetbrains uppercase text-brand-dark mb-2">
+                                                    Bukti Hasil Leg 2
+                                                </label>
+
                                                 <input
-                                                    type="number" min="0"
-                                                    value={scoreData.homeScoreLeg2}
-                                                    onChange={e => setScoreData({ ...scoreData, homeScoreLeg2: e.target.value })}
-                                                    className="w-16 h-14 text-center text-xl font-black font-jetbrains text-brand-dark border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-primary/20 focus:border-brand-primary outline-none"
+                                                    ref={fileInputRefs.leg2}
+                                                    type="file"
+                                                    accept="image/png,image/jpeg,image/jpg"
+                                                    className="hidden"
+                                                    onChange={e => handleProofFile('leg2', e.target.files?.[0] || null)}
                                                 />
-                                                <span className="text-brand-muted font-black">-</span>
-                                                <input
-                                                    type="number" min="0"
-                                                    value={scoreData.awayScoreLeg2}
-                                                    onChange={e => setScoreData({ ...scoreData, awayScoreLeg2: e.target.value })}
-                                                    className="w-16 h-14 text-center text-xl font-black font-jetbrains text-brand-dark border border-brand-border rounded-xl focus:ring-4 focus:ring-brand-primary/20 focus:border-brand-primary outline-none"
-                                                />
+
+                                                {proofPreviewUrls.leg2 ? (
+                                                    <div className="relative rounded-xl border border-brand-border overflow-hidden bg-white">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src={proofPreviewUrls.leg2}
+                                                            alt="Preview bukti hasil Leg 2"
+                                                            className="w-full max-h-56 object-contain bg-white"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveProof('leg2')}
+                                                            className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 text-red-500 hover:bg-red-50 shadow-sm transition-colors"
+                                                        >
+                                                            <XCircle size={18} />
+                                                        </button>
+                                                        <div className="px-3 py-2 flex items-center gap-2 border-t border-brand-border bg-white">
+                                                            <ImageIcon size={14} className="text-brand-muted shrink-0" />
+                                                            <span className="text-xs text-brand-dark truncate">{proofFiles.leg2?.name}</span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div
+                                                        onClick={() => fileInputRefs.leg2.current?.click()}
+                                                        onDragOver={e => { e.preventDefault(); setIsDraggingProof(prev => ({ ...prev, leg2: true })); }}
+                                                        onDragLeave={() => setIsDraggingProof(prev => ({ ...prev, leg2: false }))}
+                                                        onDrop={handleDrop('leg2')}
+                                                        className={`w-full border-2 border-dashed rounded-xl p-6 bg-white transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer group ${isDraggingProof.leg2
+                                                            ? 'border-brand-gold bg-brand-gold/5 shadow-[0_0_15px_rgba(252,179,53,0.15)]'
+                                                            : 'border-brand-border hover:bg-brand-bg-surface'
+                                                            }`}
+                                                    >
+                                                        <div className="w-10 h-10 rounded-full bg-brand-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                            <Upload size={20} className="text-brand-primary" />
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <p className="font-semibold text-xs text-brand-dark">Upload Screenshot</p>
+                                                            <p className="text-[9px] text-brand-muted mt-0.5">JPG/PNG · maks 5MB · isi kalau Leg 2 sudah main</p>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* INPUT BUKTI SCREENSHOT */}
-                                    <div>
-                                        <label className="block text-xs font-black font-jetbrains uppercase text-brand-dark mb-2">
-                                            Link Screenshot / Gambar Bukti
-                                        </label>
-                                        <input
-                                            type="url" required placeholder="https://prnt.sc/xxx atau link GDrive..."
-                                            value={scoreData.screenshotUrl}
-                                            onChange={e => setScoreData({ ...scoreData, screenshotUrl: e.target.value })}
-                                            className="w-full text-sm border border-brand-border rounded-xl px-4 py-3 bg-brand-bg-surface focus:ring-4 focus:ring-brand-primary/20 focus:border-brand-primary outline-none text-brand-dark transition-all"
-                                        />
-                                    </div>
-
                                     <button
-                                        type="submit" disabled={isSubmitting}
+                                        type="submit" disabled={isSubmitting || isUploadingProof.leg1 || isUploadingProof.leg2}
                                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black font-jetbrains py-4 rounded-xl text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50"
                                     >
-                                        {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} strokeWidth={3} />}
-                                        KIRIM LAPORAN KE ADMIN
+                                        {(isSubmitting || isUploadingProof.leg1 || isUploadingProof.leg2)
+                                            ? <Loader2 size={18} className="animate-spin" />
+                                            : <CheckCircle2 size={18} strokeWidth={3} />}
+                                        {(isUploadingProof.leg1 || isUploadingProof.leg2) ? 'MENGUNGGAH BUKTI...' : 'KIRIM LAPORAN KE ADMIN'}
                                     </button>
                                 </form>
                             </div>
@@ -293,8 +540,8 @@ export default function MatchCenterModal({ matchId, onClose, onSuccess }: MatchC
                                         <div key={msg.id} className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
                                             <span className="text-[10px] font-bold text-brand-muted mb-1 ml-1">{msg.senderName}</span>
                                             <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${msg.isMe
-                                                    ? 'bg-brand-primary text-white rounded-br-none'
-                                                    : 'bg-white border border-brand-border text-brand-dark rounded-bl-none'
+                                                ? 'bg-brand-primary text-white rounded-br-none'
+                                                : 'bg-white border border-brand-border text-brand-dark rounded-bl-none'
                                                 }`}>
                                                 {msg.message}
                                             </div>

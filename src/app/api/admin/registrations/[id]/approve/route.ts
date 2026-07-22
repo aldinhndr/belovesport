@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-// Import fungsi notifikasi WhatsApp Fonnte yang sudah kita buat
+// Import fungsi notifikasi WhatsApp Fonnte yang sudah diperbarui parameternya
 import { sendWaNotification } from '@/lib/whatsapp';
 
 export async function POST(
@@ -13,9 +13,13 @@ export async function POST(
     // Ambil ID registrasi langsung dari parameter URL dinamis Next.js
     const { id: registrationId } = await params;
 
-    // 1. Validasi Keberadaan Data Registrasi
+    // 1. Validasi Keberadaan Data Registrasi + Tarik Data Akun Peserta (Participant Relation)
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
+      // 💡 REFACTOR: Ambil relasi participant untuk mendapatkan username dan email akun dasbor
+      include: {
+        participant: true, 
+      }
     });
 
     if (!registration) {
@@ -39,6 +43,7 @@ export async function POST(
       const updatedReg = await tx.registration.update({
         where: { id: registrationId },
         data: { status: 'APPROVED' },
+        include: { participant: true } // Pastikan relasi ikut terbawa keluar transaksi
       });
 
       // Langkah B: Generate string acak unik 6 karakter untuk kode voucher
@@ -56,15 +61,19 @@ export async function POST(
       return { updatedReg, newVoucher };
     });
 
-    // 3. EKSKUSI OTOMATISASI NOTIFIKASI WA FONNTE
-    // Dijalankan secara non-blocking agar dashboard admin tetap terasa responsif
+    // 3. EKSEKUSI OTOMATISASI NOTIFIKASI WA FONNTE (7 PARAMETER LENGKAP)
+    // Dijalankan secara non-blocking dengan fallback aman agar tidak memicu unhandledRejection
     sendWaNotification(
-      result.updatedReg.whatsappNumber, // Sesuai dengan kolom whatsappNumber di schema Koko!
+      result.updatedReg.whatsappNumber,
       result.updatedReg.teamName,
       result.newVoucher.voucherCode,
       result.updatedReg.leaderName,
-      result.updatedReg.email
-    );
+      result.updatedReg.participant?.email || result.updatedReg.email, // Email akun / email form
+      result.updatedReg.participant?.username || result.updatedReg.leaderName, // 🚀 FIX: Username dari relasi DB
+      "Dibuat saat registrasi" // 🚀 FIX: Keterangan password (karena di DB sudah ter-hash/enkripsi demi keamanan)
+    ).catch((err) => {
+      console.error('Gagal mengirimkan background WA Notification:', err);
+    });
 
     // 4. Kembalikan Response Sukses ke Dashboard Admin Frontend
     return NextResponse.json({

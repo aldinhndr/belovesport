@@ -89,6 +89,7 @@ export default function MyMatchSchedule() {
                         {matches.map((match) => {
                             const isCompleted = match.matchStatus === 'COMPLETED';
                             const isWaiting = match.matchStatus === 'WAITING_VERIFICATION';
+                            const isPlaying = match.matchStatus === 'PLAYING';
                             const isGroupStage = match.stage === 'GROUP';
 
                             // Hitung Agregat Skor Sementara
@@ -107,6 +108,11 @@ export default function MyMatchSchedule() {
                                             <span className="text-[10px] font-bold font-jetbrains text-brand-muted">
                                                 Match #{match.matchNumber}
                                             </span>
+                                            {isPlaying && (
+                                                <span className="flex items-center gap-1 text-[10px] font-black font-jetbrains text-brand-primary uppercase tracking-widest">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" /> LIVE
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1.5 text-xs text-brand-muted font-medium">
                                             <span className="font-bold text-brand-dark truncate max-w-[150px]">{match.homeTeam?.teamName || 'TBD'}</span>

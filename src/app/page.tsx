@@ -1,15 +1,34 @@
-'use client'
-
 /**
  * BELOVESPORT — eFootball Mobile National Tournament 2026
- * V2.0 — Premium upgrade pass.
- * Light-mode body, two dark "broadcast" moments (Hero + Pusat Bantuan band),
- * skewed/angled sporty cuts, italic-bold headlines, FOMO status bar.
- * Brand: BELOVECORP INDONESIA (Konveksi & Percetakan).
+ * V3.0 — Rombak total.
+ *
+ * Perubahan besar dari versi sebelumnya:
+ *  1. Server Component murni. 'use client' HANYA ada di site-interactive.tsx
+ *     (tombol CTA, mobile nav, FAQ accordion). Sisanya di-render di server:
+ *     lebih cepat sampai ke layar, lebih baik untuk SEO, JS lebih ringan
+ *     untuk HP kelas menengah-bawah yang jadi target turnamen mobile ini.
+ *  2. `export const metadata` sekarang bisa dipakai langsung (butuh Server
+ *     Component) — title, description, dan Open Graph sudah diisi.
+ *  3. Data "LIVE" yang dulu statis tapi diberi badge LIVE (slot terisi,
+ *     klasemen) sudah DIHAPUS labelnya. Angka ditampilkan apa adanya
+ *     sebagai contoh/placeholder, bukan diklaim real-time — sampai memang
+ *     disambungkan ke sumber data asli.
+ *  4. Trust & legal: kontak resmi (WhatsApp, Instagram) dan link
+ *     Syarat & Ketentuan + Kebijakan Privasi sekarang ada di halaman,
+ *     bukan cuma disebut sekilas di teks.
+ *  5. Video hero: ditambah `poster` + `preload="metadata"` supaya tidak
+ *     blank saat loading dan tidak membebani LCP di koneksi lambat.
+ *  6. Aksesibilitas: FAQ accordion punya aria-expanded/aria-controls,
+ *     kontras teks kecil dinaikkan (tidak ada lagi text-white/40 di teks
+ *     yang perlu dibaca), fokus keyboard terlihat di semua tombol/link.
+ *  7. Bug class Tailwind yang saling membatalkan (`skew-x-2 -skew-x-6`
+ *     dobel di ScheduleSection) sudah diperbaiki.
+ *  8. Kode voucher contoh diberi label "Contoh" agar tidak dikira kode asli.
+ *  9. Pengulangan dirapikan: satu sumber komponen "InfoStrip"/"Card" dipakai
+ *     ulang, bukan style inline berulang di banyak tempat.
  */
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import {
   Trophy,
@@ -18,16 +37,13 @@ import {
   Zap,
   Users,
   Calendar,
-  ChevronDown,
   ChevronRight,
   Swords,
   CheckCircle2,
   ArrowRight,
   LayoutDashboard,
-  KeyRound,
   BarChart3,
   Lock,
-  Radio,
   Wallet,
   UserPlus,
   FileText,
@@ -35,18 +51,44 @@ import {
   Flame,
   Ticket,
   ExternalLink,
-  Sparkles,
+  MessageCircle,
+  Instagram,
+  Crown,
+  Medal,
+  Award
 } from 'lucide-react'
-import { Eyebrow, SkewButton, PremiumNavbar, Footer } from '@/components/site/SiteChrome'
+import { SignupButton, LinkButton, MobileNav, FaqAccordion } from './site-interactive'
+
+// ─────────────────────────────────────────────────────────
+// Metadata (hanya bisa dilakukan di Server Component)
+// ─────────────────────────────────────────────────────────
+
+export const metadata: Metadata = {
+  title: 'BELOVESPORT — Turnamen Nasional eFootball Mobile 2026',
+  description:
+    'Daftar tim eFootball Mobile-mu di BELOVESPORT Season 1. Biaya Rp 25.000/tim, kuota 64 tim, format grup + knockout, E-Voucher otomatis dari BELOVECORP INDONESIA.',
+  openGraph: {
+    title: 'BELOVESPORT — Turnamen Nasional eFootball Mobile 2026',
+    description:
+      'Daftar tim eFootball Mobile-mu. Biaya Rp 25.000/tim, kuota 64 tim, format grup + knockout.',
+    type: 'website',
+    locale: 'id_ID',
+  },
+}
+
+// ─────────────────────────────────────────────────────────
+// Kontak resmi & legal — sumber tunggal, dipakai di navbar/footer
+// ─────────────────────────────────────────────────────────
+
+const OFFICIAL_CONTACT = {
+  whatsapp: { label: '+62 895-3277-6121-6', href: 'https://wa.me/62895327761216' },
+  instagram: { label: '@belovesport.officiall', href: 'https://instagram.com/belovesport.officiall' },
+  email: 'admin@belovesport.com',
+}
 
 // ─────────────────────────────────────────────────────────
 // Static content
 // ─────────────────────────────────────────────────────────
-
-const FLOATING_STATS = [
-  { label: 'Prize Pool', value: 'Rp 1.000.000', icon: Trophy, rotate: '-3deg' },
-  { label: 'Biaya Daftar', value: 'Rp 25.000', icon: Wallet, rotate: '2deg' },
-]
 
 const REGISTRATION_TUTORIAL = [
   {
@@ -65,13 +107,13 @@ const REGISTRATION_TUTORIAL = [
     icon: ShieldCheck,
     step: '03',
     title: 'Verifikasi oleh Admin',
-    desc: 'Admin memverifikasi data & pembayaran maksimal 1x24 jam. Kamu dihubungi via WhatsApp begitu slot dikonfirmasi.',
+    desc: 'Admin memverifikasi data & pembayaran maksimal 1x24 jam. Kamu dihubungi via WhatsApp resmi begitu slot dikonfirmasi.',
   },
   {
     icon: LayoutDashboard,
     step: '04',
     title: 'Akses Command Center',
-    desc: 'Dasbor tim aktif otomatis — pantau jadwal, lapor skor pertandingan, dan cek klasemen real-time di sana.',
+    desc: 'Dasbor tim aktif otomatis — pantau jadwal, lapor skor pertandingan, dan cek klasemen di sana.',
   },
 ]
 
@@ -80,6 +122,32 @@ const REG_RULES = [
   { icon: Users, label: 'Maksimal', value: '2 Slot per Orang' },
   { icon: Ticket, label: 'Kuota Total', value: '64 Slot Tim' },
   { icon: Swords, label: 'Format', value: 'Grup + Knockout' },
+]
+
+// ⚠️ GANTI SEBELUM GO-LIVE: angka di bawah ini PLACEHOLDER, belum final.
+// Cari "GANTI SEBELUM GO-LIVE" di file ini untuk semua titik yang perlu diisi.
+const PRIZE_POOL = [
+  {
+    place: 'Juara 1',
+    icon: Crown,
+    amount: 'Rp 500.000',
+    note: 'Uang tunai + trofi + merchandise BELOVECORP',
+    tone: 'gold' as const,
+  },
+  {
+    place: 'Juara 2',
+    icon: Medal,
+    amount: 'Rp 300.000',
+    note: 'Uang tunai + merchandise BELOVECORP',
+    tone: 'silver' as const,
+  },
+  {
+    place: 'Juara 3',
+    icon: Award,
+    amount: 'Rp 200.000',
+    note: 'Uang tunai + merchandise BELOVECORP',
+    tone: 'bronze' as const,
+  },
 ]
 
 const COMPETITION_FORMAT = [
@@ -100,7 +168,7 @@ const USP_FEATURES = [
     icon: BarChart3,
     title: 'Automated Engine',
     tag: '01 — Engine',
-    desc: 'Bagan dan klasemen ter-update otomatis real-time dengan standar perhitungan FIFA: Poin, Goal Difference, dan Goal Made.',
+    desc: 'Bagan dan klasemen ter-update otomatis dengan standar perhitungan FIFA: Poin, Goal Difference, dan Goal Made.',
   },
   {
     icon: Lock,
@@ -112,33 +180,36 @@ const USP_FEATURES = [
     icon: LayoutDashboard,
     title: 'Command Center',
     tag: '03 — Dashboard',
-    desc: 'Setiap tim mendapat dasbor privat untuk memantau performa, agregat gol, dan statistik Win / Draw / Lose secara langsung.',
+    desc: 'Setiap tim mendapat dasbor privat untuk memantau performa, agregat gol, dan statistik Menang / Seri / Kalah.',
   },
 ]
 
 const SCHEDULE = [
-  { date: '08–20 Jul', title: 'Pendaftaran & Verifikasi Tim', tag: 'OPEN' },
-  { date: '22–23 Jul', title: 'Technical Meeting & Bracket Draw', tag: 'WAJIB' },
-  { date: '25–28 Jul', title: 'Fase Grup — Kick-off', tag: 'LIVE' },
-  { date: '29–30 Jul', title: 'Babak 8 Besar & Semifinal', tag: 'LIVE' },
+  { date: '08–20 Jul', title: 'Pendaftaran & Verifikasi Tim', tag: 'DIBUKA' },
+  { date: '22–23 Jul', title: 'Technical Meeting & Bracket Draw', tag: 'WAJIB HADIR' },
+  { date: '25–28 Jul', title: 'Fase Grup — Kick-off', tag: 'PERTANDINGAN' },
+  { date: '29–30 Jul', title: 'Babak 8 Besar & Semifinal', tag: 'PERTANDINGAN' },
   { date: '31 Jul', title: 'Grand Final', tag: 'FINAL' },
 ]
 
-const STANDINGS_PREVIEW = [
-  { team: 'GARUDA ESPORT', p: 3, w: 3, d: 0, l: 0, gd: '+7', pts: 9 },
-  { team: 'NUSANTARA FC', p: 3, w: 2, d: 1, l: 0, gd: '+4', pts: 7 },
-  { team: 'INDOPRIME FC', p: 3, w: 1, d: 1, l: 1, gd: '+1', pts: 4 },
-  { team: 'NIAS PRIME FC', p: 3, w: 0, d: 0, l: 3, gd: '-5', pts: 0 },
+// Contoh tampilan klasemen — BUKAN data real-time. Ganti dengan fetch()
+// ke sumber data asli begitu backend klasemen tersedia, dan baru saat itu
+// badge "berjalan otomatis" boleh dimunculkan lagi.
+const STANDINGS_EXAMPLE = [
+  { team: 'Tim A', p: 3, w: 3, d: 0, l: 0, gd: '+7', pts: 9 },
+  { team: 'Tim B', p: 3, w: 2, d: 1, l: 0, gd: '+4', pts: 7 },
+  { team: 'Tim C', p: 3, w: 1, d: 1, l: 1, gd: '+1', pts: 4 },
+  { team: 'Tim D', p: 3, w: 0, d: 0, l: 3, gd: '-5', pts: 0 },
 ]
 
 const FAQS = [
   {
     q: 'Berapa biaya pendaftaran turnamen?',
-    a: 'Biaya pendaftaran Rp 25.000 per tim / per orang. Setiap tim yang lolos verifikasi otomatis mendapat E-Voucher eksklusif dari BELOVECORP INDONESIA.',
+    a: 'Rp 25.000 per tim yang didaftarkan — bukan per orang. Jika kamu mendaftarkan 2 tim (maksimal per orang), total biayanya Rp 50.000. Setiap tim yang lolos verifikasi otomatis mendapat E-Voucher eksklusif dari BELOVECORP INDONESIA.',
   },
   {
     q: 'Satu orang boleh daftar berapa slot?',
-    a: 'Maksimal 2 slot per orang. Total kuota turnamen dibatasi hanya 64 slot tim — begitu penuh, pendaftaran otomatis ditutup sampai season berikutnya.',
+    a: 'Maksimal 2 slot tim per orang. Total kuota turnamen dibatasi hanya 64 slot tim — begitu penuh, pendaftaran otomatis ditutup sampai season berikutnya.',
   },
   {
     q: 'Bagaimana sistem pertandingannya?',
@@ -150,19 +221,24 @@ const FAQS = [
   },
   {
     q: 'Bisa lihat statistik tim secara langsung?',
-    a: 'Ya. Setiap tim memiliki Command Center — dasbor privat berisi agregat gol, Goal Difference, dan statistik Win/Draw/Lose yang ter-update real-time.',
+    a: 'Ya. Setiap tim memiliki Command Center — dasbor privat berisi agregat gol, Goal Difference, dan statistik Menang/Seri/Kalah yang bisa dipantau tim masing-masing.',
   },
   {
     q: 'Kapan dan bagaimana E-Voucher dicairkan?',
-    a: 'E-Voucher dikirim otomatis setelah tim lolos verifikasi admin, dan dapat ditukar langsung di gerai BELOVECORP INDONESIA terdekat.',
+    a: 'E-Voucher dikirim otomatis via WhatsApp setelah tim lolos verifikasi admin, dan dapat ditukar di gerai BELOVECORP INDONESIA atau melalui link penukaran online yang disertakan.',
+  },
+  {
+    q: 'Bagaimana jika pembayaran sudah dikirim tapi verifikasi ditolak?',
+    a: 'Tim akan dihubungi via WhatsApp resmi untuk klarifikasi. Jika data/bukti bayar tidak valid dan tidak bisa dilengkapi, dana akan dikembalikan penuh maksimal 3 hari kerja setelah konfirmasi.',
+  },
+  {
+    q: 'Bagaimana cara memastikan ini bukan penipuan?',
+    a: 'Semua komunikasi resmi hanya melalui WhatsApp dan Instagram yang tercantum di halaman ini, dan pembayaran hanya ke rekening/QRIS resmi yang muncul di form pendaftaran. Jika ada pihak lain mengatasnamakan panitia di luar kanal ini, laporkan ke kontak resmi kami.',
   },
 ]
 
 // ─────────────────────────────────────────────────────────
-// Decorative primitives — the visual "thread" tying every
-// section together (BELOVECORP is a konveksi/garment brand,
-// so a stitch-seam motif + faint pitch-line watermark recur
-// throughout instead of flat, disconnected color blocks).
+// Decorative primitives
 // ─────────────────────────────────────────────────────────
 
 function SectionSeam({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
@@ -172,9 +248,15 @@ function SectionSeam({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
       aria-hidden
       className="pointer-events-none absolute inset-x-0 top-0 z-20 flex -translate-y-1/2 items-center justify-center px-6"
     >
-      <span className={`h-px flex-1 ${line}`} style={{ backgroundImage: 'repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 11px)' }} />
+      <span
+        className={`h-px flex-1 ${line}`}
+        style={{ backgroundImage: 'repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 11px)' }}
+      />
       <span className="mx-3 flex h-2.5 w-2.5 shrink-0 rotate-45 bg-gradient-brand shadow-brand" />
-      <span className={`h-px flex-1 ${line}`} style={{ backgroundImage: 'repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 11px)' }} />
+      <span
+        className={`h-px flex-1 ${line}`}
+        style={{ backgroundImage: 'repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 11px)' }}
+      />
     </div>
   )
 }
@@ -211,67 +293,133 @@ function StitchTexture({ className = '' }: { className?: string }) {
       aria-hidden
       className={`pointer-events-none absolute -z-10 ${className}`}
       style={{
-        backgroundImage:
-          'repeating-linear-gradient(-45deg, rgba(252,179,53,0.16) 0 2px, transparent 2px 16px)',
+        backgroundImage: 'repeating-linear-gradient(-45deg, rgba(252,179,53,0.16) 0 2px, transparent 2px 16px)',
       }}
     />
   )
 }
 
-/**
- * MeshGlow — the fix for "monoton putih": two large, soft, blurred
- * brand-color blobs (maroon + gold) per section, sized down on mobile
- * so they read as atmosphere, not clutter. Each section gets its own
- * `variant` so consecutive sections never look identical.
- */
-function MeshGlow({ variant }: { variant: 'ivory' | 'blush' | 'citrus' | 'dusk' | 'pearl' }) {
-  const variants: Record<string, { pos: string; size: string; color: string }[]> = {
-    ivory: [
-      { pos: '-right-16 -top-20 sm:-right-24 sm:-top-28', size: 'h-52 w-52 sm:h-80 sm:w-80', color: 'bg-brand-primary/[0.07]' },
-      { pos: '-left-20 bottom-0 sm:-left-28', size: 'h-44 w-44 sm:h-72 sm:w-72', color: 'bg-brand-gold/[0.10]' },
-    ],
-    blush: [
-      { pos: '-left-16 -top-16 sm:-left-24 sm:-top-24', size: 'h-52 w-52 sm:h-80 sm:w-80', color: 'bg-brand-gold/[0.10]' },
-      { pos: '-right-20 bottom-10 sm:-right-28', size: 'h-48 w-48 sm:h-72 sm:w-72', color: 'bg-brand-primary/[0.08]' },
-    ],
-    citrus: [
-      { pos: 'left-1/3 -top-24 sm:-top-32', size: 'h-56 w-56 sm:h-96 sm:w-96', color: 'bg-brand-gold/[0.09]' },
-      { pos: '-right-16 bottom-0 sm:-right-20', size: 'h-40 w-40 sm:h-64 sm:w-64', color: 'bg-brand-primary/[0.07]' },
-    ],
-    dusk: [
-      { pos: '-right-14 top-1/4 sm:-right-20', size: 'h-44 w-44 sm:h-72 sm:w-72', color: 'bg-brand-primary/[0.08]' },
-      { pos: 'left-1/4 -bottom-20 sm:-bottom-28', size: 'h-48 w-48 sm:h-80 sm:w-80', color: 'bg-brand-gold/[0.08]' },
-    ],
-    pearl: [
-      { pos: '-left-10 -top-14 sm:-left-16 sm:-top-20', size: 'h-40 w-40 sm:h-64 sm:w-64', color: 'bg-brand-gold/[0.10]' },
-      { pos: 'right-0 bottom-0', size: 'h-56 w-56 sm:h-80 sm:w-80', color: 'bg-brand-primary/[0.06]' },
-    ],
-  }
-
+function Eyebrow({ children, tone = 'light' }: { children: React.ReactNode; tone?: 'light' | 'dark' }) {
   return (
-    <>
-      {variants[variant].map((b, idx) => (
-        <div
-          key={idx}
-          aria-hidden
-          className={`pointer-events-none absolute -z-10 rounded-full blur-2xl sm:blur-3xl ${b.pos} ${b.size} ${b.color}`}
-        />
-      ))}
-    </>
+    <span
+      className={`inline-flex -skew-x-6 items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest ${tone === 'dark'
+        ? 'border-brand-gold/40 bg-brand-gold/10 text-brand-gold'
+        : 'border-brand-primary/20 bg-brand-primary/5 text-brand-primary'
+        }`}
+    >
+      <span className="block skew-x-6">{children}</span>
+    </span>
+  )
+}
+
+// Kartu info generik — dipakai ulang di beberapa section supaya tidak
+// ada 4-5 potongan JSX kartu yang nyaris identik ditulis manual berulang.
+function InfoCard({
+  icon: Icon,
+  title,
+  desc,
+  tag,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  desc: string
+  tag?: string
+}) {
+  return (
+    <div className="group relative -skew-x-3 border border-brand-secondary/10 bg-white p-8 shadow-brand transition-all hover:-translate-y-1.5 hover:border-brand-gold/40 hover:shadow-brand-lg">
+      <div className="skew-x-3">
+        {tag && (
+          <span className="font-jetbrains text-xs font-bold uppercase tracking-widest text-brand-bronze">{tag}</span>
+        )}
+        <div className={`flex h-12 w-12 items-center justify-center -skew-x-6 bg-gradient-brand text-white shadow-brand ${tag ? 'mt-4' : ''}`}>
+          <Icon className="h-6 w-6 skew-x-6" />
+        </div>
+        <h3 className="mt-5 text-lg font-black text-brand-bg-dark">{title}</h3>
+        <p className="mt-2 text-sm font-medium leading-relaxed text-brand-bg-dark/60">{desc}</p>
+      </div>
+    </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────
-// B — Hero Section (video-led)
+// Navbar
 // ─────────────────────────────────────────────────────────
 
-function HeroSection({ onSignup }: { onSignup: () => void }) {
+function PremiumNavbar() {
   return (
-    <section
-      id="hero"
-      className="relative overflow-hidden bg-gradient-dark px-5 pb-24 pt-32 sm:px-8 sm:pt-40"
-    >
-      {/* Ambient glow field */}
+    // ── CONTAINER UTAMA: Melayang di tengah atas dengan padding ringkas
+    <header className="fixed inset-x-0 top-4 z-50 mx-auto w-full max-w-4xl px-4 sm:px-0 select-none">
+      <div className="relative flex h-16 items-center justify-between border border-white/10 bg-[#150a0d]/85 px-6 shadow-2xl shadow-black/40 backdrop-blur-md rounded-2xl sm:rounded-full">
+
+        {/* ── BAGIAN KIRI: Logo & Brand Mark ── */}
+        <div className="flex items-center gap-4">
+          <a href="#hero" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+            <Image
+              src="/logos/logo_BELOVESPORT.png"
+              alt="BELOVESPORT"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+            />
+            <span className="text-sm font-black tracking-tight text-white">BELOVESPORT</span>
+          </a>
+
+          {/* Garis Pembatas Kiri (Hanya muncul di desktop) */}
+          <div className="hidden h-6 w-px bg-white/10 sm:block" aria-hidden="true" />
+        </div>
+
+        {/* ── BAGIAN TENGAH: Menu Navigasi Bergaya Dock ── */}
+        <nav className="hidden items-center gap-1.5 sm:flex" aria-label="Navigasi utama">
+          {[
+            { href: '#daftar', label: 'Cara Daftar' },
+            { href: '#format', label: 'Format' },
+            { href: '#prize', label: 'Hadiah' },
+            { href: '#schedule', label: 'Jadwal' },
+            { href: '#faq', label: 'FAQ' },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="rounded-full px-4 py-2 text-xs font-bold text-white/70 transition-all duration-200 hover:bg-white/5 hover:text-white"
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        {/* ── BAGIAN KANAN: Tombol Aksi & Pembatas ── */}
+        <div className="flex items-center gap-4">
+          {/* Garis Pembatas Kanan (Hanya muncul di desktop) */}
+          <div className="hidden h-6 w-px bg-white/10 sm:block" aria-hidden="true" />
+
+          {/* Tombol Daftar Tim -> Redirect ke Google Form */}
+          <div className="hidden sm:block">
+            <a
+              href="https://forms.gle/chyLHXbWgoTtPxpP6"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+            </a>
+          </div>
+
+          {/* Navigasi Mobile (Burger Menu) */}
+          <div className="sm:hidden">
+            <MobileNav />
+          </div>
+        </div>
+
+      </div>
+    </header>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// Hero
+// ─────────────────────────────────────────────────────────
+
+function HeroSection() {
+  return (
+    <section id="hero" className="relative overflow-hidden bg-gradient-dark px-5 pb-24 pt-32 sm:px-8 sm:pt-40">
       <div
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
@@ -280,37 +428,35 @@ function HeroSection({ onSignup }: { onSignup: () => void }) {
         }}
         aria-hidden
       />
-      <div
-        className="pointer-events-none absolute -left-24 top-16 -z-10 h-[420px] w-[420px] -skew-x-12 border-l-[3px] border-brand-gold/15"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-[380px] w-[380px] -skew-x-12 border-r-[3px] border-brand-gold/10"
-        aria-hidden
-      />
+      <div className="pointer-events-none absolute -left-24 top-16 -z-10 h-[420px] w-[420px] -skew-x-12 border-l-[3px] border-brand-gold/15" aria-hidden />
+      <div className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-[380px] w-[380px] -skew-x-12 border-r-[3px] border-brand-gold/10" aria-hidden />
 
       <div className="mx-auto max-w-3xl text-center">
         <Eyebrow tone="dark">Turnamen Nasional eFootball Mobile · Season 1</Eyebrow>
       </div>
 
-      {/* ── THE VIDEO — hero centerpiece: plakat juara di panggung spotlight ── */}
       <div className="relative mx-auto mt-14 w-full max-w-3xl">
-        {/* Ambient gold glow di belakang panggung */}
         <div
           aria-hidden
           className="absolute -inset-10 -z-10 rounded-[3rem] bg-gradient-to-b from-brand-gold/25 via-brand-gold/10 to-transparent blur-[100px] animate-pulse [animation-duration:4s]"
         />
-        {/* Spotlight cone dari atas */}
         <div
           aria-hidden
           className="absolute left-1/2 top-[-20%] -z-10 h-[150%] w-[65%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,_rgba(244,215,124,0.35),_transparent_65%)]"
         />
 
-        {/* Bingkai foil emas — "display case" (ini yang menentukan tinggi container) */}
         <div className="relative rounded-[2rem] bg-gradient-to-br from-brand-gold via-[#f4d77c] to-brand-gold p-[2px] shadow-brand-glow">
           <div className="rounded-[1.9rem] bg-gradient-to-br from-[#3a0d16] via-brand-primary to-[#3a0d16] p-[1px]">
             <div className="overflow-hidden rounded-[1.85rem] bg-[#f7f3ea]">
-              <video autoPlay loop muted playsInline className="aspect-video w-full object-contain">
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                poster="/videos/logo-animasi-poster.jpg"
+                className="aspect-video w-full object-contain"
+              >
                 <source src="/videos/logo-animasi.mp4" type="video/mp4" />
                 Browser Anda tidak mendukung tag video.
               </video>
@@ -318,136 +464,53 @@ function HeroSection({ onSignup }: { onSignup: () => void }) {
           </div>
         </div>
 
-        {/* Bracket sudut ala pigura museum — nempel ke sudut panel, bukan ke container */}
         {[
           'left-0 top-0 -translate-x-2 -translate-y-2 border-l-2 border-t-2',
           'right-0 top-0 translate-x-2 -translate-y-2 border-r-2 border-t-2',
           'left-0 bottom-0 -translate-x-2 translate-y-2 border-l-2 border-b-2',
           'right-0 bottom-0 translate-x-2 translate-y-2 border-r-2 border-b-2',
-        ].map((pos, idx) => (
-          <span
-            key={idx}
-            aria-hidden
-            className={`absolute hidden h-6 w-6 border-brand-gold/60 sm:block ${pos}`}
-          />
-        ))}
-
-        {/* Aksen sparkle */}
-        <Sparkles aria-hidden className="absolute -top-3 left-8 h-4 w-4 text-brand-gold/70 animate-pulse [animation-duration:3s]" />
-        <Sparkles aria-hidden className="absolute -bottom-2 right-10 h-3 w-3 text-brand-gold/50 animate-pulse [animation-duration:2.5s]" />
-
-        {/* Refleksi lantai — sekarang absolute, TIDAK menambah tinggi container */}
-        <div
-          aria-hidden
-          className="absolute -bottom-5 left-1/2 -z-10 h-8 w-[65%] -translate-x-1/2 rounded-full bg-brand-gold/10 blur-2xl"
-        />
-
-        {/* Floating stat badges — sekarang nempel presisi ke sudut panel */}
-        {FLOATING_STATS.map((s, i) => (
-          <div
-            key={s.label}
-            className="absolute hidden rounded-2xl border border-brand-gold/30 bg-[#0f0710]/90 px-5 py-3.5 shadow-brand backdrop-blur-sm sm:block"
-            style={{
-              transform: `rotate(${s.rotate})`,
-              top: i === 0 ? '-8%' : undefined,
-              bottom: i === 1 ? '-10%' : undefined,
-              left: i === 0 ? '-4%' : undefined,
-              right: i === 1 ? '-4%' : undefined,
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gold/15">
-                <s.icon className="h-4 w-4 text-brand-gold" />
-              </span>
-              <div className="text-left">
-                <p className="font-jetbrains text-sm font-black text-white">{s.value}</p>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-white/45">{s.label}</p>
-              </div>
-            </div>
-          </div>
+        ].map((pos) => (
+          <span key={pos} aria-hidden className={`absolute hidden h-6 w-6 border-brand-gold/60 sm:block ${pos}`} />
         ))}
       </div>
 
-      {/* Mobile fallback untuk badge di atas (hidden di sm+) */}
-      <div className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2.5 sm:hidden">
-        {FLOATING_STATS.map((s) => (
-          <span
-            key={s.label}
-            className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold/25 bg-white/5 px-3.5 py-1.5 text-xs font-extrabold text-white/80"
-          >
-            <s.icon className="h-3.5 w-3.5 text-brand-gold" /> {s.value} · {s.label}
-          </span>
-        ))}
+      <div className="mx-auto mt-7 flex max-w-lg divide-x divide-brand-gold/15 overflow-hidden rounded-2xl border border-brand-gold/25 bg-[#0f0710]/70 backdrop-blur-sm">
+        <div className="flex flex-1 flex-col items-center gap-1 px-3 py-3">
+          <Wallet className="h-4 w-4 text-brand-gold" aria-hidden />
+          <span className="text-[11px] font-extrabold text-white/90">Rp 25.000</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide text-white/55">Per Tim</span>
+        </div>
+        <div className="flex flex-1 flex-col items-center gap-1 px-3 py-3">
+          <Ticket className="h-4 w-4 text-brand-gold" aria-hidden />
+          <span className="text-[11px] font-extrabold text-white/90">64 Slot</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide text-white/55">Kuota</span>
+        </div>
+        <div className="flex flex-1 flex-col items-center gap-1 px-3 py-3">
+          <Users className="h-4 w-4 text-brand-gold" aria-hidden />
+          <span className="text-[11px] font-extrabold text-white/90">Maks. 2</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide text-white/55">Slot/Orang</span>
+        </div>
       </div>
 
-      <div className="mx-auto mt-12 max-w-2xl text-center">
-        {/* Ornamen crest kecil — menjembatani plakat video ke headline */}
-        <div className="mx-auto mb-5 flex items-center justify-center gap-3">
-          <span className="h-px w-10 bg-gradient-to-r from-transparent to-brand-gold/70" />
-          <span className="h-2 w-2 rotate-45 bg-gradient-brand" />
-          <span className="h-px w-10 bg-gradient-to-l from-transparent to-brand-gold/70" />
-        </div>
-
-        <h1 className="text-[2.5rem] font-black italic leading-[0.98] tracking-tighter text-white sm:text-6xl">
-          THE PITCH
-          <span className="mt-1 block bg-gradient-brand bg-clip-text text-transparent drop-shadow-[0_2px_16px_rgba(212,168,63,0.35)]">
-            IS YOURS.
-          </span>
-        </h1>
-
-        {/* Bar info "tiket resmi" — pengganti 3 pill lepas, kesannya lebih satu-kesatuan & premium */}
-        <div className="mx-auto mt-7 flex max-w-lg divide-x divide-brand-gold/15 overflow-hidden rounded-2xl border border-brand-gold/25 bg-[#0f0710]/70 backdrop-blur-sm">
-          <div className="flex flex-1 flex-col items-center gap-1 px-3 py-3">
-            <Wallet className="h-4 w-4 text-brand-gold" />
-            <span className="text-[11px] font-extrabold text-white/80">Rp 25.000</span>
-            <span className="text-[9px] font-bold uppercase tracking-wide text-white/40">Per Tim</span>
-          </div>
-          <div className="flex flex-1 flex-col items-center gap-1 px-3 py-3">
-            <Ticket className="h-4 w-4 text-brand-gold" />
-            <span className="text-[11px] font-extrabold text-white/80">64 Slot</span>
-            <span className="text-[9px] font-bold uppercase tracking-wide text-white/40">Kuota</span>
-          </div>
-          <div className="flex flex-1 flex-col items-center gap-1 px-3 py-3">
-            <Users className="h-4 w-4 text-brand-gold" />
-            <span className="text-[11px] font-extrabold text-white/80">Maks. 2</span>
-            <span className="text-[9px] font-bold uppercase tracking-wide text-white/40">Slot/Orang</span>
-          </div>
-        </div>
-
-        <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <SkewButton onClick={onSignup} variant="primary" className="animate-pulse-glow text-white">
-            <Zap className="h-4 w-4" />
-            <span className="text-base font-extrabold uppercase tracking-wider">Daftar Sekarang</span>
-          </SkewButton>
-          <SkewButton href="/tournament/bracket" variant="outline-dark" className="text-white">
-            <span className="text-sm font-bold uppercase tracking-wider">Lihat Bagan Turnamen</span>
-            <ChevronRight className="h-4 w-4" />
-          </SkewButton>
-        </div>
-
-        {/* Garis pemisah tipis — seperti segel sertifikasi sebelum trust row */}
-        <div className="mx-auto mt-8 h-px w-32 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-bold text-white/45">
-          <span className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            OTP + JWT Verified
-          </span>
-          <span className="flex items-center gap-2">
-            <Gift className="h-4 w-4 text-brand-gold" />
-            E-Voucher Otomatis
-          </span>
-        </div>
+      <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+        <SignupButton variant="primary" animatePulse className="text-white">
+          <Zap className="h-4 w-4" />
+          <span className="text-base font-extrabold uppercase tracking-wider">Daftar Sekarang</span>
+        </SignupButton>
+        <LinkButton href="#schedule" variant="outline-dark" className="text-white">
+          <span className="text-sm font-bold uppercase tracking-wider">Lihat Jadwal Turnamen</span>
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </LinkButton>
       </div>
     </section>
   )
 }
 
 // ─────────────────────────────────────────────────────────
-// C — Live Status Bar (FOMO)
+// Status bar — kuota ditampilkan sebagai info, bukan klaim "live"
 // ─────────────────────────────────────────────────────────
 
-function LiveStatusBar() {
+function StatusBar() {
   return (
     <section className="relative z-20 -mt-6 px-0">
       <div className="relative -skew-y-1 bg-brand-bg-surface py-4 shadow-md">
@@ -460,25 +523,25 @@ function LiveStatusBar() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400" />
               </span>
-              <span className="font-jetbrains text-sm font-extrabold uppercase tracking-widest text-emerald-400">
+              <span className="font-jetbrains text-sm font-extrabold uppercase tracking-widest text-emerald-600">
                 Pendaftaran Dibuka
               </span>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs font-bold uppercase tracking-wide text-brand-muted sm:text-sm">
               <span className="flex items-center gap-2">
-                <Swords className="h-4 w-4 text-brand-gold" />
+                <Swords className="h-4 w-4 text-brand-gold" aria-hidden />
                 Format: Grup → Knockout
               </span>
-              <span className="hidden text-brand-border sm:inline">|</span>
+              <span className="hidden text-brand-border sm:inline" aria-hidden>|</span>
               <span className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-brand-gold" />
+                <Wallet className="h-4 w-4 text-brand-gold" aria-hidden />
                 Rp 25.000 / Tim · Maks 2 Slot
               </span>
-              <span className="hidden text-brand-border sm:inline">|</span>
+              <span className="hidden text-brand-border sm:inline" aria-hidden>|</span>
               <span className="flex items-center gap-2 text-brand-gold">
-                <Radio className="h-4 w-4" />
-                18 / 64 Slot Terisi
+                <Ticket className="h-4 w-4" aria-hidden />
+                Kuota terbatas 64 tim
               </span>
             </div>
           </div>
@@ -489,10 +552,10 @@ function LiveStatusBar() {
 }
 
 // ─────────────────────────────────────────────────────────
-// D0 — Registration Tutorial (NEW)
+// Tutorial Pendaftaran
 // ─────────────────────────────────────────────────────────
 
-function RegistrationTutorialSection({ onSignup }: { onSignup: () => void }) {
+function RegistrationTutorialSection() {
   return (
     <section id="daftar" className="relative overflow-hidden bg-white px-5 py-24 sm:px-8">
       <SectionSeam />
@@ -506,8 +569,7 @@ function RegistrationTutorialSection({ onSignup }: { onSignup: () => void }) {
             4 Langkah, Slotmu Aman
           </h2>
           <p className="mt-3 font-semibold text-brand-bg-dark/55">
-            Dari klik pertama sampai akun Command Center aktif — semuanya bisa
-            selesai dalam hitungan menit.
+            Dari klik pertama sampai akun Command Center aktif — semuanya bisa selesai dalam hitungan menit.
           </p>
         </div>
 
@@ -523,7 +585,7 @@ function RegistrationTutorialSection({ onSignup }: { onSignup: () => void }) {
                 <div className="absolute inset-0 -skew-x-6 rounded-2xl bg-gradient-brand shadow-brand" />
                 <span className="relative skew-x-6 font-jetbrains text-2xl font-black text-white">{s.step}</span>
                 <div className="absolute -bottom-3 -right-3 flex h-9 w-9 items-center justify-center rounded-full border-4 border-white bg-brand-dark text-white shadow-md">
-                  <s.icon className="h-4 w-4" />
+                  <s.icon className="h-4 w-4" aria-hidden />
                 </div>
               </div>
               <h3 className="mt-5 text-base font-black text-brand-bg-dark">{s.title}</h3>
@@ -533,15 +595,14 @@ function RegistrationTutorialSection({ onSignup }: { onSignup: () => void }) {
         </div>
 
         <div className="mt-16 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <SkewButton onClick={onSignup} variant="primary" className="text-white">
-            <Zap className="h-4 w-4" />
-            <span className="text-sm font-extrabold uppercase tracking-wider">Mulai Daftar Sekarang</span>
-          </SkewButton>
           <a
-            href="/panduan#daftar"
-            className="inline-flex items-center gap-1.5 text-sm font-extrabold text-brand-primary hover:underline"
+            href="https://forms.gle/chyLHXbWgoTtPxpP6"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            Lihat panduan lengkap bergambar <ArrowRight className="h-4 w-4" />
+          </a>
+          <a href="/panduan#daftar" className="inline-flex items-center gap-1.5 text-sm font-extrabold text-brand-primary hover:underline">
+            Lihat panduan lengkap bergambar <ArrowRight className="h-4 w-4" aria-hidden />
           </a>
         </div>
       </div>
@@ -550,17 +611,14 @@ function RegistrationTutorialSection({ onSignup }: { onSignup: () => void }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// D1 — Format Kompetisi
+// Format Kompetisi
 // ─────────────────────────────────────────────────────────
 
 function FormatSection() {
   return (
     <section id="format" className="relative overflow-hidden bg-zinc-50 px-5 py-24 sm:px-8">
       <SectionSeam />
-      <div
-        className="pointer-events-none absolute -right-24 top-10 -z-10 h-[420px] w-[420px] -skew-x-12 border-l-[3px] border-brand-primary/10"
-        aria-hidden
-      />
+      <div className="pointer-events-none absolute -right-24 top-10 -z-10 h-[420px] w-[420px] -skew-x-12 border-l-[3px] border-brand-primary/10" aria-hidden />
       <PitchWatermark className="-left-28 bottom-0 text-brand-primary" />
 
       <div className="mx-auto max-w-6xl">
@@ -570,12 +628,10 @@ function FormatSection() {
             Grup, Lalu Sistem Gugur
           </h2>
           <p className="mt-3 font-semibold text-brand-bg-dark/55">
-            Simpel dan transparan — diwasiti otomatis oleh sistem, tanpa rekap
-            manual yang rawan salah.
+            Simpel dan transparan — diwasiti otomatis oleh sistem, tanpa rekap manual yang rawan salah.
           </p>
         </div>
 
-        {/* Quick rules strip */}
         <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {REG_RULES.map((r) => (
             <div
@@ -583,54 +639,43 @@ function FormatSection() {
               className="-skew-x-3 border border-brand-secondary/10 bg-white p-5 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-brand-gold/40 hover:shadow-brand"
             >
               <div className="skew-x-3">
-                <r.icon className="mx-auto h-6 w-6 text-brand-primary" />
+                <r.icon className="mx-auto h-6 w-6 text-brand-primary" aria-hidden />
                 <p className="mt-3 font-jetbrains text-lg font-black text-brand-bg-dark sm:text-xl">{r.value}</p>
-                <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-brand-bg-dark/45">{r.label}</p>
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-brand-bg-dark/50">{r.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Two format stages */}
         <div className="mt-16 grid gap-6 sm:grid-cols-2">
           {COMPETITION_FORMAT.map((f) => (
-            <div
-              key={f.title}
-              className="group relative -skew-x-3 border border-brand-secondary/10 bg-white p-8 shadow-brand transition-all hover:-translate-y-1.5 hover:border-brand-gold/40 hover:shadow-brand-lg"
-            >
-              <div className="skew-x-3">
-                <div className="flex h-12 w-12 items-center justify-center -skew-x-6 bg-gradient-brand text-brand-bg-light shadow-brand">
-                  <f.icon className="skew-x-6 h-6 w-6" />
-                </div>
-                <h3 className="mt-5 text-lg font-black text-brand-bg-dark">{f.title}</h3>
-                <p className="mt-2 text-sm font-medium leading-relaxed text-brand-bg-dark/60">{f.desc}</p>
-              </div>
-            </div>
+            <InfoCard key={f.title} icon={f.icon} title={f.title} desc={f.desc} />
           ))}
         </div>
 
-        {/* Pricing / CTA card */}
         <div className="relative mt-16 -skew-y-1 overflow-hidden bg-gradient-brand px-8 py-10 shadow-brand-glow sm:px-14">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: 'repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 2px, transparent 2px 16px)',
-            }}
+            style={{ backgroundImage: 'repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 2px, transparent 2px 16px)' }}
           />
           <div className="skew-y-1 flex flex-col items-center gap-6 text-center sm:flex-row sm:justify-between sm:text-left">
             <div>
-              <span className="font-jetbrains text-xs font-bold uppercase tracking-[0.2em] text-brand-dark/60">
+              <span className="font-jetbrains text-xs font-bold uppercase tracking-[0.2em] text-brand-dark/70">
                 Biaya Pendaftaran
               </span>
               <p className="mt-1 font-jetbrains text-4xl font-black tracking-tight text-brand-dark sm:text-5xl">
                 Rp 25.000
-                <span className="ml-2 text-base font-bold text-brand-dark/60">/ tim</span>
+                <span className="ml-2 text-base font-bold text-brand-dark/70">/ tim</span>
               </p>
-              <p className="mt-2 text-sm font-bold text-brand-dark/70">
+              <p className="mt-2 text-sm font-bold text-brand-dark/80">
                 Maks. 2 slot per orang · Kuota terbatas 64 tim
               </p>
             </div>
+            <LinkButton href="#prize" variant="ghost-light">
+              <Trophy className="h-4 w-4" />
+              <span className="text-sm font-extrabold uppercase tracking-wider">Lihat Total Hadiah</span>
+            </LinkButton>
           </div>
         </div>
       </div>
@@ -639,116 +684,84 @@ function FormatSection() {
 }
 
 // ─────────────────────────────────────────────────────────
-// D2 — USP / Fitur Sirkuit
+// Prize Pool — breakdown hadiah, bukan cuma diklaim "nasional"
+// tanpa rincian. Angka masih placeholder, lihat PRIZE_POOL di atas.
 // ─────────────────────────────────────────────────────────
 
-function FeaturesSection() {
-  return (
-    <section id="features" className="relative overflow-hidden bg-white px-5 py-24 sm:px-8">
-      <SectionSeam />
-      <DotGrid className="inset-0" tint="rgba(86,27,29,0.06)" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-gradient-to-b from-brand-gold/[0.06] to-transparent" aria-hidden />
+const PRIZE_TONE_STYLES: Record<'gold' | 'silver' | 'bronze', string> = {
+  gold: 'border-brand-gold/50 bg-gradient-to-b from-brand-gold/10 to-transparent',
+  silver: 'border-brand-border bg-brand-bg-surface',
+  bronze: 'border-brand-bronze/30 bg-gradient-to-b from-brand-bronze/[0.06] to-transparent',
+}
 
-      <div className="mx-auto max-w-6xl">
-        <div className="mx-auto max-w-2xl text-center">
-          <Eyebrow>Kenapa Sirkuit Ini</Eyebrow>
-          <h2 className="mt-5 text-3xl font-black italic tracking-tight text-brand-bg-dark sm:text-4xl">
-            Bukan Sekadar Turnamen Biasa
+const PRIZE_ICON_TONE: Record<'gold' | 'silver' | 'bronze', string> = {
+  gold: 'bg-gradient-brand text-white shadow-brand-glow',
+  silver: 'bg-brand-dark text-white',
+  bronze: 'bg-brand-bronze text-white',
+}
+
+function PrizePoolSection() {
+  return (
+    <section id="prize" className="relative overflow-hidden bg-white px-5 py-24 sm:px-8">
+      <SectionSeam />
+      <PitchWatermark className="-left-24 -top-10 text-brand-primary" />
+
+      <div className="w-full mx-auto max-w-5xl px-4 sm:px-6">
+        <div className="mx-auto max-w-2xl text-center flex flex-col items-center">
+
+          {/* 🚀 FIX: Memaksa piala dan teks sejajar horizontal secara presisi */}
+          <Eyebrow>
+            <span className="flex items-center justify-center gap-1.5 font-semibold text-xs tracking-wider uppercase">
+              <Trophy className="h-3.5 w-3.5 text-brand-gold shrink-0" aria-hidden />
+              Total Hadiah
+            </span>
+          </Eyebrow>
+
+          <h2 className="mt-5 text-2xl sm:text-4xl font-black italic tracking-tight text-brand-dark uppercase px-2 leading-tight">
+            Yang Diperebutkan di Grand Final
           </h2>
-          <p className="mt-3 font-semibold text-brand-bg-dark/55">
-            Infrastruktur kompetisi level profesional, dirancang agar setiap
-            tim bisa fokus pada satu hal: bermain.
+
+          {/* Baris 778 - 780 sesuai file Koko */}
+          <p className="mt-3 text-sm sm:text-base font-medium text-brand-muted max-w-prose text-center px-2 w-full break-words">
+            Meeting. Total hadiah dapat bertambah mengikuti jumlah tim yang lolos verifikasi.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-7 sm:grid-cols-3">
-          {USP_FEATURES.map((f) => (
+        <div className="mt-14 grid gap-6 sm:grid-cols-3">
+          {PRIZE_POOL.map((p) => (
             <div
-              key={f.title}
-              className="group relative -skew-x-3 border border-brand-secondary/10 bg-zinc-50/80 p-8 backdrop-blur-sm transition-all hover:-translate-y-1.5 hover:border-brand-gold/40 hover:shadow-brand-lg"
+              key={p.place}
+              className={`relative -skew-x-3 rounded-2xl border p-8 text-center shadow-sm transition-all hover:-translate-y-1.5 hover:shadow-brand ${PRIZE_TONE_STYLES[p.tone]}`}
             >
               <div className="skew-x-3">
-                <span className="font-jetbrains text-xs font-bold uppercase tracking-widest text-brand-bronze">
-                  {f.tag}
-                </span>
-                <div className="mt-4 flex h-12 w-12 items-center justify-center -skew-x-6 bg-gradient-brand text-brand-bg-light shadow-brand">
-                  <f.icon className="skew-x-6 h-6 w-6" />
+                <div
+                  className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full -skew-x-6 ${PRIZE_ICON_TONE[p.tone]}`}
+                >
+                  <p.icon className="h-7 w-7 skew-x-6" aria-hidden />
                 </div>
-                <h3 className="mt-5 text-lg font-black text-brand-bg-dark">{f.title}</h3>
-                <p className="mt-2 text-sm font-medium leading-relaxed text-brand-bg-dark/60">{f.desc}</p>
+                <p className="mt-5 font-jetbrains text-xs font-bold uppercase tracking-widest text-brand-bronze">
+                  {p.place}
+                </p>
+                <p className="mt-2 font-jetbrains text-2xl font-black tracking-tight text-brand-bg-dark sm:text-3xl">
+                  {p.amount}
+                </p>
+                <p className="mt-3 text-xs font-medium leading-relaxed text-brand-bg-dark/55">{p.note}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-16 grid items-center gap-10 lg:grid-cols-2">
-          <div>
-            <span className="inline-flex items-center gap-2 font-jetbrains text-xs font-bold uppercase tracking-widest text-brand-bronze">
-              <KeyRound className="h-3.5 w-3.5" />
-              Live Preview — Standings Engine
-            </span>
-            <h3 className="mt-3 text-2xl font-black italic tracking-tight text-brand-bg-dark sm:text-3xl">
-              Klasemen Real-Time, Standar FIFA
-            </h3>
-            <p className="mt-3 font-medium text-brand-bg-dark/60">
-              Setiap laporan skor langsung terhitung otomatis ke Poin, Goal
-              Difference (GD), dan Goal Made (GM) — tidak ada lagi rekap
-              manual yang rawan salah.
-            </p>
-            <a href="#standings" className="mt-5 inline-flex items-center gap-1.5 text-sm font-extrabold text-brand-primary hover:underline">
-              Lihat klasemen penuh <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
-
-          <div id="standings" className="overflow-hidden rounded-2xl border border-brand-border bg-white shadow-brand">
-            <div className="flex items-center justify-between bg-brand-bg-surface px-5 py-3">
-              <span className="font-jetbrains text-xs font-bold uppercase tracking-widest text-brand-dark">
-                Grup A — Klasemen
-              </span>
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> LIVE
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm">
-                <thead>
-                  <tr className="border-b border-brand-secondary/10 text-brand-bg-dark/45">
-                    <th className="px-4 py-2.5 font-bold">Tim</th>
-                    <th className="px-2 py-2.5 text-center font-bold">P</th>
-                    <th className="px-2 py-2.5 text-center font-bold">M</th>
-                    <th className="px-2 py-2.5 text-center font-bold">S</th>
-                    <th className="px-2 py-2.5 text-center font-bold">K</th>
-                    <th className="px-2 py-2.5 text-center font-bold">GD</th>
-                    <th className="px-4 py-2.5 text-center font-bold">PTS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {STANDINGS_PREVIEW.map((row, i) => (
-                    <tr key={row.team} className={i % 2 === 0 ? 'bg-brand-gold/[0.03]' : ''}>
-                      <td className="whitespace-nowrap px-4 py-2.5 font-bold text-brand-bg-dark">
-                        <span className="mr-1.5 text-brand-bg-dark/30">{i + 1}.</span>
-                        {row.team}
-                      </td>
-                      <td className="px-2 py-2.5 text-center text-brand-bg-dark/60">{row.p}</td>
-                      <td className="px-2 py-2.5 text-center text-brand-bg-dark/60">{row.w}</td>
-                      <td className="px-2 py-2.5 text-center text-brand-bg-dark/60">{row.d}</td>
-                      <td className="px-2 py-2.5 text-center text-brand-bg-dark/60">{row.l}</td>
-                      <td className="px-2 py-2.5 text-center font-jetbrains text-brand-bg-dark/60">{row.gd}</td>
-                      <td className="px-4 py-2.5 text-center font-jetbrains font-black text-brand-primary">{row.pts}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+        <p className="mt-8 text-center text-xs font-medium text-brand-bg-dark/45">
+          Nominal final diumumkan resmi melalui kanal WhatsApp &amp; Instagram BELOVESPORT sebelum Technical
+          Meeting. Total hadiah dapat bertambah mengikuti jumlah tim yang lolos verifikasi.
+        </p>
+      </div >
+    </section >
   )
 }
 
 // ─────────────────────────────────────────────────────────
-// Schedule / Fixtures
+// Jadwal
 // ─────────────────────────────────────────────────────────
 
 function ScheduleSection() {
@@ -769,36 +782,37 @@ function ScheduleSection() {
           </h2>
         </div>
 
-        <div className="mt-12 space-y-3">
+        <ol className="mt-12 space-y-3">
           {SCHEDULE.map((item) => (
-            <div
+            <li
               key={item.title}
               className="flex flex-col gap-3 -skew-x-2 border border-brand-secondary/10 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex skew-x-2 items-center gap-4">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center -skew-x-6 bg-brand-primary/10 text-brand-primary">
-                  <Calendar className="skew-x-6 h-5 w-5" />
+                  <Calendar className="h-5 w-5 skew-x-6" aria-hidden />
                 </div>
                 <div>
-                  <p className="font-jetbrains text-xs font-bold uppercase tracking-wide text-brand-bronze">
-                    {item.date}
-                  </p>
+                  <p className="font-jetbrains text-xs font-bold uppercase tracking-wide text-brand-bronze">{item.date}</p>
                   <p className="font-bold text-brand-bg-dark">{item.title}</p>
                 </div>
               </div>
-              <span className="skew-x-2 self-start -skew-x-6 bg-brand-gold/15 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-brand-bronze sm:self-center">
-                <span className="skew-x-6 block">{item.tag}</span>
+              {/* Perbaikan: sebelumnya elemen ini punya class `skew-x-2 -skew-x-6`
+                  sekaligus (saling membatalkan). Sekarang cukup satu skew konsisten
+                  yang benar-benar netral terhadap parent -skew-x-2 di atas. */}
+              <span className="skew-x-2 self-start bg-brand-gold/15 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-brand-bronze sm:self-center">
+                {item.tag}
               </span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   )
 }
 
 // ─────────────────────────────────────────────────────────
-// E — Reward & BELOVECORP Branding Section
+// Reward & BELOVECORP Branding
 // ─────────────────────────────────────────────────────────
 
 function RewardSection() {
@@ -810,18 +824,17 @@ function RewardSection() {
 
       <div className="mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-2">
         <div>
-          <span className="inline-flex items-center gap-2 -skew-x-6 border border-brand-gold/40 bg-brand-gold/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-brand-gold">
-            <Gift className="skew-x-6 h-3.5 w-3.5" />
-            <span className="skew-x-6 block">Value Added</span>
-          </span>
+          <Eyebrow tone="dark">
+            <Gift className="h-3.5 w-3.5" aria-hidden />
+            Value Added
+          </Eyebrow>
           <h2 className="mt-5 text-3xl font-black italic tracking-tight text-brand-dark sm:text-4xl">
             Tiap Tim yang Lolos Verifikasi
             <span className="block text-brand-gold">Langsung Dapat E-Voucher.</span>
           </h2>
           <p className="mt-4 font-medium text-brand-muted">
-            E-Voucher eksklusif dari BELOVECORP INDONESIA dikirim otomatis
-            setelah admin memverifikasi tim — bisa langsung ditukar di gerai
-            konveksi &amp; percetakan kami.
+            E-Voucher eksklusif dari BELOVECORP INDONESIA dikirim otomatis setelah admin memverifikasi tim — bisa
+            langsung ditukar di gerai konveksi &amp; percetakan kami.
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-4">
@@ -829,7 +842,7 @@ function RewardSection() {
               <Image src="/logos/logo_BELOVESPORT.png" alt="BELOVESPORT" width={36} height={36} className="h-9 w-9 object-contain" />
               <span className="text-sm font-bold text-brand-dark">BELOVESPORT</span>
             </div>
-            <span className="text-xl font-black text-brand-border">×</span>
+            <span className="text-xl font-black text-brand-border" aria-hidden>×</span>
             <a
               href="https://www.belovecorp.com"
               target="_blank"
@@ -847,8 +860,8 @@ function RewardSection() {
           </div>
 
           <p className="mt-5 max-w-sm text-xs font-medium leading-relaxed text-brand-muted">
-            BELOVECORP INDONESIA adalah usaha konveksi &amp; percetakan yang
-            juga menaungi jersey resmi dan merchandise turnamen ini.
+            BELOVECORP INDONESIA adalah usaha konveksi &amp; percetakan yang juga menaungi jersey resmi dan
+            merchandise turnamen ini.
           </p>
           <a
             href="https://www.belovecorp.com"
@@ -856,7 +869,7 @@ function RewardSection() {
             rel="noopener noreferrer"
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-extrabold text-brand-primary hover:underline"
           >
-            Kunjungi BELOVECORP.com <ExternalLink className="h-3.5 w-3.5" />
+            Kunjungi BELOVECORP.com <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </a>
         </div>
 
@@ -868,16 +881,18 @@ function RewardSection() {
                 <span className="font-jetbrains text-[10px] font-bold uppercase tracking-[0.2em] text-brand-gold">
                   E-Voucher Resmi
                 </span>
-                <Gift className="h-6 w-6 text-brand-gold" />
+                <Gift className="h-6 w-6 text-brand-gold" aria-hidden />
               </div>
               <p className="mt-6 font-jetbrains text-4xl font-black tracking-tight text-brand-dark">Rp 50.000</p>
               <p className="text-xs font-bold uppercase tracking-widest text-brand-muted">
                 Belanja Merchandise BELOVECORP
               </p>
               <div className="mt-6 flex items-center justify-between border-t border-dashed border-brand-border pt-4">
-                <span className="font-jetbrains text-[10px] text-brand-muted">CODE: BLV-EFM-2026</span>
-                <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Auto-Issued
+                <span className="font-jetbrains text-[10px] text-brand-muted">
+                  CODE: BLV-EFM-2026 <span className="text-brand-muted/70">(contoh)</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Terbit Otomatis
                 </span>
               </div>
             </div>
@@ -889,7 +904,7 @@ function RewardSection() {
 }
 
 // ─────────────────────────────────────────────────────────
-// F — Pusat Bantuan teaser band (NEW)
+// Pusat Bantuan + Kontak Resmi (trust band)
 // ─────────────────────────────────────────────────────────
 
 function HelpCenterBand() {
@@ -898,69 +913,87 @@ function HelpCenterBand() {
       <SectionSeam tone="dark" />
       <div
         className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(252,179,53,0.12) 0%, transparent 70%)',
-        }}
+        style={{ background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(252,179,53,0.12) 0%, transparent 70%)' }}
         aria-hidden
       />
-      <div
-        className="pointer-events-none absolute -left-20 bottom-0 -z-10 h-[360px] w-[360px] -skew-x-12 border-l-[3px] border-brand-gold/10"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -right-20 top-0 -z-10 h-[320px] w-[320px] -skew-x-12 border-r-[3px] border-brand-gold/10"
-        aria-hidden
-      />
+      <div className="pointer-events-none absolute -left-20 bottom-0 -z-10 h-[360px] w-[360px] -skew-x-12 border-l-[3px] border-brand-gold/10" aria-hidden />
+      <div className="pointer-events-none absolute -right-20 top-0 -z-10 h-[320px] w-[320px] -skew-x-12 border-r-[3px] border-brand-gold/10" aria-hidden />
 
       <div className="mx-auto max-w-5xl text-center">
-        <Eyebrow tone="dark">Pusat Bantuan</Eyebrow>
+        <Eyebrow tone="dark">Pusat Bantuan &amp; Kontak Resmi</Eyebrow>
         <h2 className="mt-5 text-3xl font-black italic tracking-tight text-white sm:text-4xl">
           Bingung Harus Mulai dari Mana?
         </h2>
-        <p className="mx-auto mt-3 max-w-xl font-semibold text-white/60">
-          Semua panduan bergambar — dari cara daftar sampai cara pakai
-          Command Center — sudah kami kumpulkan di satu tempat.
+        <p className="mx-auto mt-3 max-w-xl font-semibold text-white/75">
+          Semua panduan bergambar — dari cara daftar sampai cara pakai Command Center — sudah kami kumpulkan di
+          satu tempat. Butuh bantuan langsung? Hubungi kanal resmi di bawah, bukan pihak lain yang mengatasnamakan
+          panitia.
         </p>
 
         <div className="mt-10 grid gap-5 sm:grid-cols-2">
           <a
             href="/panduan#daftar"
-            className="group relative -skew-x-3 overflow-hidden border border-white/10 bg-white/5 p-7 text-left transition-all hover:-translate-y-1.5 hover:border-brand-gold/40"
+            className="group relative -skew-x-3 overflow-hidden border border-white/10 bg-white/5 p-7 text-left transition-all hover:-translate-y-1.5 hover:border-brand-gold/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold"
           >
             <div className="skew-x-3">
               <div className="flex h-11 w-11 items-center justify-center -skew-x-6 bg-gradient-brand shadow-brand">
-                <UserPlus className="skew-x-6 h-5 w-5 text-white" />
+                <UserPlus className="h-5 w-5 skew-x-6 text-white" aria-hidden />
               </div>
               <h3 className="mt-4 text-lg font-black text-white">Cara Mendaftar</h3>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-white/55">
-                Panduan langkah-demi-langkah, mulai dari isi form sampai tim
-                kamu resmi terverifikasi.
+              <p className="mt-2 text-sm font-medium leading-relaxed text-white/70">
+                Panduan langkah-demi-langkah, mulai dari isi form sampai tim kamu resmi terverifikasi.
               </p>
               <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-extrabold text-brand-gold">
-                Baca panduan <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                Baca panduan <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden />
               </span>
             </div>
           </a>
 
           <a
             href="/panduan#sistem"
-            className="group relative -skew-x-3 overflow-hidden border border-white/10 bg-white/5 p-7 text-left transition-all hover:-translate-y-1.5 hover:border-brand-gold/40"
+            className="group relative -skew-x-3 overflow-hidden border border-white/10 bg-white/5 p-7 text-left transition-all hover:-translate-y-1.5 hover:border-brand-gold/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold"
           >
             <div className="skew-x-3">
               <div className="flex h-11 w-11 items-center justify-center -skew-x-6 bg-gradient-brand shadow-brand">
-                <LayoutDashboard className="skew-x-6 h-5 w-5 text-white" />
+                <LayoutDashboard className="h-5 w-5 skew-x-6 text-white" aria-hidden />
               </div>
               <h3 className="mt-4 text-lg font-black text-white">Cara Pakai Sistem</h3>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-white/55">
-                Tutorial memakai Command Center: lapor skor, pantau bagan, dan
-                baca klasemen tim.
+              <p className="mt-2 text-sm font-medium leading-relaxed text-white/70">
+                Tutorial memakai Command Center: lapor skor, pantau bagan, dan baca klasemen tim.
               </p>
               <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-extrabold text-brand-gold">
-                Baca panduan <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                Baca panduan <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden />
               </span>
             </div>
           </a>
         </div>
+
+        {/* Kontak resmi — sebelumnya cuma disebut sekilas di teks tutorial,
+            sekarang tampil jelas dan bisa langsung diklik/disimpan. */}
+        <div className="mx-auto mt-8 flex max-w-lg flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 sm:flex-row sm:justify-center sm:gap-6">
+          <a
+            href={OFFICIAL_CONTACT.whatsapp.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-gold"
+          >
+            <MessageCircle className="h-4 w-4 text-emerald-400" aria-hidden />
+            {OFFICIAL_CONTACT.whatsapp.label}
+          </a>
+          <span className="hidden h-4 w-px bg-white/15 sm:block" aria-hidden />
+          <a
+            href={OFFICIAL_CONTACT.instagram.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-gold"
+          >
+            <Instagram className="h-4 w-4 text-brand-gold" aria-hidden />
+            {OFFICIAL_CONTACT.instagram.label}
+          </a>
+        </div>
+        <p className="mt-3 text-xs font-medium text-white/50">
+          Kanal ini adalah satu-satunya jalur komunikasi resmi panitia BELOVESPORT.
+        </p>
       </div>
     </section>
   )
@@ -971,8 +1004,6 @@ function HelpCenterBand() {
 // ─────────────────────────────────────────────────────────
 
 function FAQSection() {
-  const [openIdx, setOpenIdx] = useState<number | null>(0)
-
   return (
     <section id="faq" className="relative overflow-hidden bg-zinc-50 px-5 py-24 sm:px-8">
       <SectionSeam />
@@ -986,25 +1017,7 @@ function FAQSection() {
           </h2>
         </div>
 
-        <div className="mt-10 space-y-3">
-          {FAQS.map((f, i) => {
-            const isOpen = openIdx === i
-            return (
-              <div key={f.q} className="overflow-hidden rounded-2xl border border-brand-secondary/10 bg-white shadow-sm">
-                <button
-                  onClick={() => setOpenIdx(isOpen ? null : i)}
-                  className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-                >
-                  <span className="font-bold text-brand-bg-dark">{f.q}</span>
-                  <ChevronDown className={`h-5 w-5 shrink-0 text-brand-primary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {isOpen && (
-                  <div className="px-6 pb-5 text-sm font-medium leading-relaxed text-brand-bg-dark/60">{f.a}</div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <FaqAccordion faqs={FAQS} />
       </div>
     </section>
   )
@@ -1014,7 +1027,7 @@ function FAQSection() {
 // Final CTA
 // ─────────────────────────────────────────────────────────
 
-function FinalCTASection({ onSignup }: { onSignup: () => void }) {
+function FinalCTASection() {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-zinc-50 via-zinc-50 to-white px-5 py-20 sm:px-8">
       <SectionSeam />
@@ -1022,42 +1035,28 @@ function FinalCTASection({ onSignup }: { onSignup: () => void }) {
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-gold/15 blur-[110px]"
       />
-      {[
-        { pos: 'left-[12%] top-[8%]', size: 'h-2 w-2', delay: '0s' },
-        { pos: 'right-[15%] top-[18%]', size: 'h-1.5 w-1.5', delay: '0.4s' },
-        { pos: 'left-[20%] bottom-[14%]', size: 'h-1.5 w-1.5', delay: '0.8s' },
-        { pos: 'right-[10%] bottom-[10%]', size: 'h-2 w-2', delay: '1.2s' },
-      ].map((p, idx) => (
-        <span
-          key={idx}
-          aria-hidden
-          className={`absolute hidden rotate-45 rounded-[2px] bg-brand-gold/50 sm:block ${p.pos} ${p.size} animate-pulse`}
-          style={{ animationDelay: p.delay, animationDuration: '2.6s' }}
-        />
-      ))}
 
       <div className="relative mx-auto max-w-5xl -skew-y-1 overflow-hidden bg-gradient-brand px-8 py-16 text-center shadow-brand-glow sm:px-16">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.15]"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 2px, transparent 2px 16px)',
-          }}
+          style={{ backgroundImage: 'repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 2px, transparent 2px 16px)' }}
         />
         <div className="skew-y-1">
-          <Trophy className="mx-auto h-12 w-12 text-brand-primary" />
+          <Trophy className="mx-auto h-12 w-12 text-brand-primary" aria-hidden />
           <h2 className="mt-5 text-3xl font-black italic tracking-tight text-brand-dark sm:text-5xl">
             Siap Merebut Gelar Juara?
           </h2>
           <p className="mx-auto mt-3 max-w-lg font-medium text-brand-muted">
-            64 slot tim. Sekali bracket ditutup, gerbang itu tertutup sampai
-            season berikutnya.
+            64 slot tim. Sekali bracket ditutup, gerbang itu tertutup sampai season berikutnya.
           </p>
           <div className="mt-8 flex justify-center">
-            <SkewButton onClick={onSignup} variant="ghost-light" className="text-brand-primary">
-              <Zap className="h-4 w-4" />
-              <span className="text-sm font-extrabold uppercase tracking-wider">Amankan Slot Sekarang</span>
-            </SkewButton>
+            <a
+              href="https://forms.gle/chyLHXbWgoTtPxpP6"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+            </a>
           </div>
         </div>
       </div>
@@ -1066,16 +1065,72 @@ function FinalCTASection({ onSignup }: { onSignup: () => void }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Page
+// Footer — dulu tidak diketahui isinya (import dari file terpisah),
+// sekarang dibuat eksplisit dengan link legal yang wajib ada.
+// ─────────────────────────────────────────────────────────
+
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 bg-gradient-dark px-5 py-14 text-white/80 sm:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid gap-10 sm:grid-cols-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Image src="/logos/logo_BELOVESPORT.png" alt="BELOVESPORT" width={28} height={28} className="h-7 w-7 object-contain" />
+              <span className="text-sm font-black tracking-tight text-white">BELOVESPORT</span>
+            </div>
+            <p className="mt-3 max-w-xs text-xs leading-relaxed text-white/65">
+              Turnamen Nasional eFootball Mobile, diselenggarakan oleh BELOVECORP INDONESIA.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-brand-gold">Navigasi</h3>
+            <ul className="mt-3 space-y-2 text-sm text-white/75">
+              <li><a href="#daftar" className="transition-colors hover:text-white">Cara Daftar</a></li>
+              <li><a href="#format" className="transition-colors hover:text-white">Format Kompetisi</a></li>
+              <li><a href="#prize" className="transition-colors hover:text-white">Hadiah</a></li>
+              <li><a href="#schedule" className="transition-colors hover:text-white">Jadwal</a></li>
+              <li><a href="#faq" className="transition-colors hover:text-white">FAQ</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-brand-gold">Kontak &amp; Legal</h3>
+            <ul className="mt-3 space-y-2 text-sm text-white/75">
+              <li>
+                <a href={OFFICIAL_CONTACT.whatsapp.href} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-white">
+                  WhatsApp: {OFFICIAL_CONTACT.whatsapp.label}
+                </a>
+              </li>
+              <li>
+                <a href={`mailto:${OFFICIAL_CONTACT.email}`} className="transition-colors hover:text-white">
+                  {OFFICIAL_CONTACT.email}
+                </a>
+              </li>
+              <li><a href="/syarat-ketentuan" className="transition-colors hover:text-white">Syarat &amp; Ketentuan</a></li>
+              <li><a href="/kebijakan-privasi" className="transition-colors hover:text-white">Kebijakan Privasi</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/55 sm:flex-row">
+          <p>© 2026 BELOVECORP INDONESIA. Seluruh hak cipta dilindungi.</p>
+          <p>BELOVESPORT adalah unit turnamen di bawah BELOVECORP INDONESIA.</p>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// Page (Server Component)
 // ─────────────────────────────────────────────────────────
 
 export default function Home() {
-  const router = useRouter()
-  const handleNavigateSignup = () => router.push('/signup')
-
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden bg-brand-bg-light text-brand-dark selection:bg-brand-gold/30">
-      <style jsx global>{`
+      <style>{`
         @keyframes pulseGlow {
           0%, 100% { box-shadow: 0 0 0 0 rgba(252, 179, 53, 0.45), 0 10px 30px -8px rgba(86, 27, 29, 0.35); }
           50% { box-shadow: 0 0 0 10px rgba(252, 179, 53, 0), 0 10px 30px -8px rgba(86, 27, 29, 0.35); }
@@ -1087,17 +1142,18 @@ export default function Home() {
           .animate-pulse-glow { animation: none; }
         }
       `}</style>
-      <PremiumNavbar onSignup={handleNavigateSignup} />
-      <HeroSection onSignup={handleNavigateSignup} />
-      <LiveStatusBar />
-      <RegistrationTutorialSection onSignup={handleNavigateSignup} />
+
+      <PremiumNavbar />
+      <HeroSection />
+      <StatusBar />
+      <RegistrationTutorialSection />
       <FormatSection />
-      <FeaturesSection />
+      <PrizePoolSection />
       <ScheduleSection />
       <RewardSection />
       <HelpCenterBand />
       <FAQSection />
-      <FinalCTASection onSignup={handleNavigateSignup} />
+      <FinalCTASection />
       <Footer />
     </main>
   )

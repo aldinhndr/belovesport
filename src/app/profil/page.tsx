@@ -10,10 +10,13 @@ import ProfileTabsContent from './ProfileTabsContent';
 import { calculateMatchResult } from '@/lib/tournament';
 
 import {
-    CheckCircle2, Edit, Trophy, Activity, CalendarDays,
-    UserCircle2, Mail, ShieldCheck, Bell, Calendar, Swords,
-    BookOpen, MessageCircle, ChevronRight
+    CheckCircle2, Edit, Trophy, Mail, ShieldCheck, Bell,
+    Calendar, Swords, BookOpen, MessageCircle, Share2,
+    BadgeCheck, Hash
 } from 'lucide-react';
+
+// Batas maksimal slot tim per akun peserta (sesuaikan dengan aturan turnamen aktif)
+const MAX_TEAM_SLOTS = 5;
 
 export default async function ProfilPage() {
     const session = await getParticipantSession();
@@ -28,6 +31,7 @@ export default async function ProfilPage() {
             email: true,
             isVerified: true,
             createdAt: true,
+            profilePictureUrl: true,
         }
     });
 
@@ -79,7 +83,7 @@ export default async function ProfilPage() {
         day: 'numeric', month: 'long', year: 'numeric'
     });
 
-    const winRate = stats.main > 0 ? Math.round((stats.menang / stats.main) * 100) : 0;
+    const winRate = stats.main > 0 ? (stats.menang / stats.main) * 100 : 0;
 
     return (
         <div className="min-h-screen bg-brand-bg-light text-brand-dark">
@@ -108,6 +112,20 @@ export default async function ProfilPage() {
                             <Bell size={16} />
                             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-gold" />
                         </button>
+                        <div className="w-9 h-9 rounded-full border-2 border-brand-gold overflow-hidden shrink-0 bg-brand-bg-surface flex items-center justify-center">
+                            {participant.profilePictureUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={participant.profilePictureUrl}
+                                    alt={`Foto profil ${participant.username}`}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <span className="text-xs font-black text-brand-primary">
+                                    {participant.username.charAt(0).toUpperCase()}
+                                </span>
+                            )}
+                        </div>
                         <LogoutButtonParticipant />
                     </div>
                 </div>
@@ -115,127 +133,165 @@ export default async function ProfilPage() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
                 {/* HERO HEADER */}
-                <div className="mb-8 rounded-2xl overflow-hidden relative bg-white border border-brand-gold/25 shadow-sm">
-                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand-gold to-transparent" aria-hidden />
+                <div className="mb-8 rounded-2xl overflow-hidden relative bg-white border border-brand-border shadow-sm">
+                    <div className="absolute top-0 left-0 w-2 h-full bg-brand-primary" aria-hidden />
 
-                    <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                    <div className="relative p-6 sm:p-8 flex flex-col md:flex-row items-center md:items-end gap-8">
                         <div className="relative shrink-0">
-                            <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black bg-gradient-to-br from-brand-bg-surface to-white border-2 border-brand-gold/50 shadow-[0_0_30px_rgba(252,179,53,0.12)]">
-                                <span className="text-brand-primary">{participant.username.charAt(0).toUpperCase()}</span>
+                            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-4 border-brand-bg-surface shadow-lg flex items-center justify-center bg-gradient-to-br from-brand-bg-surface to-white">
+                                {participant.profilePictureUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                        src={participant.profilePictureUrl}
+                                        alt={`Foto profil ${participant.username}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-4xl font-black text-brand-primary">
+                                        {participant.username.charAt(0).toUpperCase()}
+                                    </span>
+                                )}
                             </div>
                             {participant.isVerified && (
-                                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center bg-emerald-500 border-2 border-white">
-                                    <CheckCircle2 size={12} className="text-white" />
+                                <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white rounded-full p-1.5 border-4 border-white flex items-center justify-center">
+                                    <CheckCircle2 size={16} />
                                 </div>
                             )}
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-brand-dark">@{participant.username}</h1>
-                                {participant.isVerified && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">
-                                        <CheckCircle2 size={10} /> Terverifikasi
-                                    </span>
-                                )}
+                        <div className="flex-1 min-w-0 text-center md:text-left">
+                            <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+                                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-brand-dark">{participant.username}</h1>
+                                <span className="inline-block text-xs font-mono bg-brand-bg-surface text-brand-muted px-3 py-1 rounded-full border border-brand-border w-fit mx-auto md:mx-0">
+                                    @{participant.username}
+                                </span>
                             </div>
-                            <p className="text-brand-muted text-sm mb-4 truncate">{participant.email}</p>
-                            <div className="flex flex-wrap gap-4 text-xs text-brand-muted">
-                                <span className="flex items-center gap-1.5"><CalendarDays size={12} />Bergabung {joinDate}</span>
-                                <span className="flex items-center gap-1.5"><Trophy size={12} className="text-brand-gold" />{myTeams.length} Tim Terdaftar</span>
-                                {stats.main > 0 && (
-                                    <span className="flex items-center gap-1.5"><Activity size={12} className="text-emerald-600" />{winRate}% Win Rate</span>
-                                )}
+                            <p className="text-brand-muted text-sm mb-4 truncate">
+                                {participant.email} • Bergabung sejak {joinDate}
+                            </p>
+                            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                                <div className="bg-brand-bg-surface px-4 py-2 rounded-xl border border-brand-border">
+                                    <p className="text-[10px] uppercase tracking-widest text-brand-muted font-bold mb-1">Active Slots</p>
+                                    <p className="font-mono text-sm font-bold text-brand-dark">
+                                        {String(myTeams.length).padStart(2, '0')} / {MAX_TEAM_SLOTS}
+                                    </p>
+                                </div>
+                                <div className="bg-brand-bg-surface px-4 py-2 rounded-xl border border-brand-gold/40 shadow-[0_0_15px_rgba(252,179,53,0.2)]">
+                                    <p className="text-[10px] uppercase tracking-widest text-brand-gold font-bold mb-1">Elite Win Rate</p>
+                                    <p className="font-mono text-sm font-bold text-brand-dark">
+                                        {stats.main > 0 ? `${winRate.toFixed(1)}%` : '—'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        <Link href="/profil/edit" className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-brand-gold/10 border border-brand-gold/40 text-brand-primary">
-                            <Edit size={14} /> Edit Profil
-                        </Link>
+                        <div className="flex gap-3 shrink-0">
+                            <Link
+                                href="/profil/edit"
+                                className="bg-brand-primary text-white px-6 py-3 rounded-full font-bold text-sm hover:scale-105 transition-transform active:scale-95 shadow-md flex items-center gap-2"
+                            >
+                                <Edit size={14} /> Edit Profil
+                            </Link>
+                            <button
+                                type="button"
+                                aria-label="Bagikan profil"
+                                className="bg-white border-2 border-brand-primary text-brand-primary px-4 py-3 rounded-full hover:bg-brand-bg-surface transition-colors"
+                            >
+                                <Share2 size={16} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* MAIN GRID */}
                 <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
                     {/* SIDEBAR KIRI */}
-                    <aside className="space-y-4">
-                        <div className="rounded-2xl overflow-hidden bg-white border border-brand-border shadow-sm">
-                            <div className="px-4 py-3 border-b border-brand-border">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-brand-bronze">Informasi Akun</p>
+                    <aside className="space-y-6 w-full lg:w-[280px]">
+                        {/* IDENTITY WIDGET: VERIFIED PARTICIPANT */}
+                        <div className="rounded-2xl bg-white border border-brand-border p-5 shadow-sm">
+                            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-brand-border">
+                                <BadgeCheck size={18} className="text-brand-gold" />
+                                <span className="text-xs font-black text-brand-dark uppercase tracking-tight">
+                                    {participant.isVerified ? 'Verified Participant' : 'Peserta'}
+                                </span>
                             </div>
-                            <div className="p-4 space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="mt-0.5 p-1.5 rounded-lg bg-brand-bg-surface"><UserCircle2 size={14} className="text-brand-muted" /></div>
-                                    <div>
-                                        <p className="text-[10px] text-brand-muted uppercase tracking-wide mb-0.5">Username / IGN</p>
-                                        <p className="text-sm font-semibold text-brand-dark">@{participant.username}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="mt-0.5 p-1.5 rounded-lg bg-brand-bg-surface"><Mail size={14} className="text-brand-muted" /></div>
-                                    <div>
-                                        <p className="text-[10px] text-brand-muted uppercase tracking-wide mb-0.5">Email</p>
-                                        <p className="text-sm font-medium text-brand-dark/80 truncate max-w-[180px]">{participant.email}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="mt-0.5 p-1.5 rounded-lg bg-brand-bg-surface"><ShieldCheck size={14} className="text-brand-muted" /></div>
-                                    <div>
-                                        <p className="text-[10px] text-brand-muted uppercase tracking-wide mb-0.5">Status Akun</p>
-                                        <p className="text-sm font-semibold text-emerald-600">Aktif &amp; Terverifikasi</p>
-                                    </div>
-                                </div>
-                            </div>
+                            <ul className="space-y-4">
+                                <li className="flex items-center justify-between gap-3">
+                                    <span className="text-xs text-brand-muted flex items-center gap-1.5"><Hash size={12} /> ID Member</span>
+                                    <span className="font-mono text-xs font-bold text-brand-dark truncate max-w-[130px]">
+                                        #{participant.id.slice(-8).toUpperCase()}
+                                    </span>
+                                </li>
+                                <li className="flex items-center justify-between gap-3">
+                                    <span className="text-xs text-brand-muted flex items-center gap-1.5"><Mail size={12} /> Email</span>
+                                    <span className="font-medium text-xs text-brand-dark truncate max-w-[130px]">{participant.email}</span>
+                                </li>
+                                <li className="flex items-center justify-between gap-3">
+                                    <span className="text-xs text-brand-muted flex items-center gap-1.5"><ShieldCheck size={12} /> Status Akun</span>
+                                    <span className="font-semibold text-xs text-emerald-600">
+                                        {participant.isVerified ? 'Aktif & Terverifikasi' : 'Belum Terverifikasi'}
+                                    </span>
+                                </li>
+                            </ul>
                         </div>
 
+                        {/* CIRCUIT STATS GRID */}
                         {myTeams.length > 0 && (
-                            <div className="rounded-2xl overflow-hidden bg-white border border-brand-border shadow-sm">
-                                <div className="px-4 py-3 border-b border-brand-border bg-slate-50">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-brand-bronze">Statistik Sirkuit</p>
-                                </div>
-                                <div className="p-4 grid grid-cols-3 gap-2">
+                            <div className="rounded-2xl bg-white border border-brand-border p-5 shadow-sm">
+                                <h3 className="text-xs font-black text-brand-dark uppercase tracking-tight mb-4">Statistik Sirkuit</h3>
+                                <div className="grid grid-cols-2 gap-2">
                                     {[
                                         { label: 'Main', value: stats.main, className: 'text-brand-dark' },
                                         { label: 'Menang', value: stats.menang, className: 'text-emerald-600' },
-                                        { label: 'Seri', value: stats.seri, className: 'text-brand-bronze' },
+                                        { label: 'Seri', value: stats.seri, className: 'text-brand-muted' },
                                         { label: 'Kalah', value: stats.kalah, className: 'text-red-600' },
-                                        { label: 'Gol', value: stats.gol, className: 'text-violet-600' },
-                                        { label: 'Win %', value: `${winRate}%`, className: 'text-emerald-600' },
+                                        { label: 'Gol', value: stats.gol, className: 'text-brand-dark' },
                                     ].map(s => (
-                                        <div key={s.label} className="text-center p-2.5 rounded-xl bg-brand-bg-surface border border-brand-border">
-                                            <div className={`text-xl font-black ${s.className}`}>{s.value}</div>
-                                            <div className="text-[9px] uppercase tracking-wide mt-0.5 text-brand-muted">{s.label}</div>
+                                        <div key={s.label} className="rounded-xl p-3 text-center border border-brand-border hover:border-brand-primary hover:bg-brand-bg-surface transition-all">
+                                            <p className="text-[10px] text-brand-muted uppercase mb-1">{s.label}</p>
+                                            <p className={`font-mono text-sm font-bold ${s.className}`}>{s.value}</p>
                                         </div>
                                     ))}
+                                    <div className="rounded-xl p-3 text-center bg-brand-primary/5 border border-brand-primary/20">
+                                        <p className="text-[10px] text-brand-primary uppercase mb-1 font-bold">Win%</p>
+                                        <p className="font-mono text-sm font-bold text-brand-primary">{winRate.toFixed(1)}</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {/* NAVIGASI AKSES CEPAT */}
-                        <div className="rounded-2xl overflow-hidden bg-white border border-brand-border shadow-sm">
-                            <div className="px-4 py-3 border-b border-brand-border">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-brand-bronze">Akses Cepat</p>
+                        <div className="rounded-2xl overflow-hidden bg-brand-bg-surface border border-brand-border shadow-sm">
+                            <div className="px-5 py-4 border-b border-brand-border">
+                                <h3 className="text-xs font-black text-brand-dark uppercase tracking-tight">Akses Cepat</h3>
                             </div>
-                            <div className="p-2 space-y-1">
+                            <nav className="flex flex-col">
                                 {[
-                                    { href: '/tournament/groups', icon: <Trophy size={15} />, label: 'Klasemen Grup', desc: 'Poin & peringkat grup' },
-                                    { href: '/tournament/schedule', icon: <Calendar size={15} />, label: 'Jadwal Tanding', desc: 'Waktu & hasil pertandingan' },
-                                    { href: '/tournament/bracket', icon: <Swords size={15} />, label: 'Bracket Knock Out', desc: 'Lihat posisi di turnamen' },
-                                    { href: '/tournament/rulebook', icon: <BookOpen size={15} />, label: 'Rulebook Resmi', desc: 'Peraturan & ketentuan' },
-                                    { href: 'https://wa.me/62895327761216', icon: <MessageCircle size={15} />, label: 'Chat Support Admin', desc: 'Butuh bantuan?' },
+                                    { href: '/tournament/groups', icon: <Trophy size={16} />, label: 'Klasemen' },
+                                    { href: '/tournament/schedule', icon: <Calendar size={16} />, label: 'Jadwal' },
+                                    { href: '/tournament/bracket', icon: <Swords size={16} />, label: 'Bracket' },
+                                    { href: '/tournament/rulebook', icon: <BookOpen size={16} />, label: 'Rulebook' },
                                 ].map(item => (
-                                    <Link key={item.label} href={item.href} className="flex items-center justify-between p-3 rounded-xl transition-all group hover:bg-brand-bg-surface">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 rounded-lg text-brand-muted group-hover:text-brand-primary transition-colors">{item.icon}</div>
-                                            <div>
-                                                <p className="text-sm font-medium text-brand-dark/85 group-hover:text-brand-dark">{item.label}</p>
-                                                <p className="text-[10px] text-brand-muted">{item.desc}</p>
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={13} className="text-brand-muted/60 group-hover:text-brand-dark" />
+                                    <Link
+                                        key={item.label}
+                                        href={item.href}
+                                        className="flex items-center gap-3 px-5 py-4 hover:bg-white transition-colors group border-b border-brand-border/60"
+                                    >
+                                        <span className="text-brand-muted group-hover:text-brand-primary transition-colors">{item.icon}</span>
+                                        <span className="text-sm font-medium text-brand-muted group-hover:text-brand-dark">{item.label}</span>
                                     </Link>
                                 ))}
-                            </div>
+                                <Link
+                                    href="https://wa.me/62895327761216"
+                                    className="flex items-center justify-between px-5 py-5 bg-brand-primary text-white group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <MessageCircle size={18} />
+                                        <span className="text-sm font-bold">Live Chat Support</span>
+                                    </div>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                </Link>
+                            </nav>
                         </div>
                     </aside>
 

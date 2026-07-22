@@ -1,7 +1,7 @@
 // Path: src/app/tournament/groups/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import {
@@ -16,15 +16,16 @@ import {
     ShieldAlert,
     Award,
     Search,
-    Crown,
+    Target,
 } from 'lucide-react';
 import LogoutButtonParticipant from '@/components/participant/LogoutButton';
 
-type TabKey = 'groups' | 'leaderboard';
+type TabKey = 'groups' | 'leaderboard' | 'stats';
 
 interface GroupTeam {
     teamId: string;
     teamName: string;
+    logoUrl?: string | null;
     played: number;
     won: number;
     drawn: number;
@@ -43,10 +44,13 @@ interface GroupData {
 interface LeaderboardTeam {
     id: string;
     teamName: string;
+    logoUrl?: string | null;
     main: number;
     menang: number;
     seri: number;
     kalah: number;
+    gm: number;
+    gk: number;
     gd: number;
     poin: number;
 }
@@ -64,6 +68,48 @@ const getCrestColor = (name: string) => {
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return CREST_PALETTE[Math.abs(hash) % CREST_PALETTE.length];
 };
+
+// 🛡️ TeamCrest — tampilkan logo asli tim, otomatis fallback ke inisial huruf
+// jika logoUrl kosong ATAU gagal dimuat (404 / broken image).
+function TeamCrest({
+    name,
+    logoUrl,
+    className = 'w-9 h-9',
+    shape = 'circle',
+    textClassName = 'text-[10px]',
+}: {
+    name: string;
+    logoUrl?: string | null;
+    className?: string;
+    shape?: 'circle' | 'square';
+    textClassName?: string;
+}) {
+    const [imgError, setImgError] = useState(false);
+    const hasLogo = !!logoUrl && logoUrl.trim() !== '' && !imgError;
+    const roundedClass = shape === 'circle' ? 'rounded-full' : 'rounded-lg';
+
+    if (hasLogo) {
+        return (
+            <div className={`${className} ${roundedClass} flex items-center justify-center p-1 border border-brand-border/30 bg-white shrink-0 shadow-sm`}>
+                <img
+                    src={logoUrl as string}
+                    alt={name}
+                    onError={() => setImgError(true)}
+                    className="w-full h-full object-contain"
+                />
+            </div>
+        );
+    }
+
+    return (
+        <span
+            className={`${className} ${roundedClass} flex items-center justify-center ${textClassName} font-black font-jetbrains text-white shrink-0 shadow-sm`}
+            style={{ backgroundColor: getCrestColor(name) }}
+        >
+            {getInitials(name)}
+        </span>
+    );
+}
 
 const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then((res) => {
     if (res.status === 401) {
@@ -106,14 +152,26 @@ export default function StandingsPage() {
         team.teamName.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // 🏆 TOP SCORER — 10 tim dengan produksi gol (goalsFor) terbanyak, diturunkan dari data grup
+    const topScorers: GroupTeam[] = useMemo(() => {
+        return groupList
+            .flatMap((g) => g.teams)
+            .filter((t) => t.teamName && t.teamName !== 'TBD')
+            .sort((a, b) => b.goalsFor - a.goalsFor)
+            .slice(0, 10);
+    }, [groupList]);
+
     const isGroupsTab = activeTab === 'groups';
+    const isLeaderboardTab = activeTab === 'leaderboard';
+    const isStatsTab = activeTab === 'stats';
 
-    const isLoading = isGroupsTab ? groupsLoading : lbLoading;
-    const errorMsg = isGroupsTab
-        ? (groupsErr ? 'Gagal terhubung ke server arena.' : (!groupsRes?.success && groupsRes?.message ? groupsRes.message : ''))
-        : (lbErr ? 'Gagal terhubung dengan database arena turnamen Belovesport.' : '');
+    // Tab Statistik menumpang data & status polling dari tab Grup (sumber datanya sama)
+    const isLoading = isLeaderboardTab ? lbLoading : groupsLoading;
+    const errorMsg = isLeaderboardTab
+        ? (lbErr ? 'Gagal terhubung dengan database arena turnamen Belovesport.' : '')
+        : (groupsErr ? 'Gagal terhubung ke server arena.' : (!groupsRes?.success && groupsRes?.message ? groupsRes.message : ''));
 
-    const mutate = isGroupsTab ? mutateGroups : mutateLb;
+    const mutate = isLeaderboardTab ? mutateLb : mutateGroups;
 
     const statusLabel = errorMsg ? 'TERPUTUS' : isLoading ? 'SINKRONISASI' : 'LIVE POLLING';
     const statusColor = errorMsg
@@ -185,16 +243,16 @@ export default function StandingsPage() {
                                 </Link>
 
                                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-brand shadow-brand-lg">
-                                    {isGroupsTab ? <LayoutGrid size={18} className="text-white" /> : <Award size={18} className="text-white" />}
+                                    {isGroupsTab ? <LayoutGrid size={18} className="text-white" /> : isLeaderboardTab ? <Award size={18} className="text-white" /> : <Target size={18} className="text-white" />}
                                 </div>
 
                                 <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight font-jetbrains text-brand-dark">
-                                    {isGroupsTab ? (<>Group <span className="text-brand-primary">Stage</span></>) : (<>Global <span className="text-brand-primary">Leaderboard</span></>)}
+                                    {isGroupsTab ? (<>Group <span className="text-brand-primary">Stage</span></>) : isLeaderboardTab ? (<>Global <span className="text-brand-primary">Leaderboard</span></>) : (<>Tim <span className="text-brand-primary">Terproduktif</span></>)}
                                 </h1>
                             </div>
                             <p className="text-brand-muted text-xs text-center lg:text-left flex items-center justify-center lg:justify-start gap-1.5 font-medium">
                                 <Trophy size={13} className="text-brand-gold shrink-0" />
-                                {isGroupsTab ? '16 Grup • 4 tim per grup • Top 2 Melaju ke Knockout' : 'Akumulasi klasifikasi seluruh tim di arena turnamen Belovesport.'}
+                                {isGroupsTab ? '16 Grup • 4 tim per grup • Top 2 Melaju ke Knockout' : isLeaderboardTab ? 'Akumulasi klasifikasi seluruh tim di arena turnamen Belovesport.' : 'Gol Terbanyak Musim Ini.'}
                             </p>
                         </div>
 
@@ -231,6 +289,10 @@ export default function StandingsPage() {
                                 <Award size={13} />
                                 Leaderboard Global
                             </button>
+                            <button type="button" onClick={() => setActiveTab('stats')} className={tabBtnClass('stats')}>
+                                <Target size={13} />
+                                Statistik
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -239,13 +301,17 @@ export default function StandingsPage() {
             {/* 🌟 MAIN CONTENT ARENA */}
             <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 flex-1">
 
-                {isLoading && ((isGroupsTab && groupList.length === 0) || (!isGroupsTab && leaderboard.length === 0)) ? (
+                {isLoading && (
+                    (isGroupsTab && groupList.length === 0) ||
+                    (isLeaderboardTab && leaderboard.length === 0) ||
+                    (isStatsTab && groupList.length === 0)
+                ) ? (
                     <div className="flex flex-col items-center justify-center py-40 text-brand-primary">
                         <div className="p-5 rounded-2xl bg-brand-bg-surface border border-brand-border shadow-sm mb-5">
                             <Loader2 size={36} className="animate-spin" />
                         </div>
                         <p className="font-jetbrains text-xs font-bold uppercase tracking-widest text-brand-muted">
-                            {isGroupsTab ? 'Menyelaraskan Papan Klasemen...' : 'Sinkronisasi Papan Peringkat...'}
+                            {isGroupsTab ? 'Menyelaraskan Papan Klasemen...' : isLeaderboardTab ? 'Sinkronisasi Papan Peringkat...' : 'Menghitung Statistik Gol...'}
                         </p>
                     </div>
                 ) : errorMsg ? (
@@ -337,12 +403,12 @@ export default function StandingsPage() {
                                                                 {/* Nama Klub */}
                                                                 <td className="py-3 px-3">
                                                                     <div className="flex items-center gap-2.5">
-                                                                        <span
-                                                                            className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black font-jetbrains text-white shrink-0 shadow-sm"
-                                                                            style={{ backgroundColor: getCrestColor(team.teamName) }}
-                                                                        >
-                                                                            {getInitials(team.teamName)}
-                                                                        </span>
+                                                                        <TeamCrest
+                                                                            name={team.teamName}
+                                                                            logoUrl={team.logoUrl}
+                                                                            className="w-6 h-6"
+                                                                            textClassName="text-[9px]"
+                                                                        />
                                                                         <span className="font-bold truncate max-w-[150px] text-brand-dark">
                                                                             {team.teamName}
                                                                         </span>
@@ -378,7 +444,7 @@ export default function StandingsPage() {
                             })}
                         </div>
                     </>
-                ) : (
+                ) : isLeaderboardTab ? (
                     <div className="max-w-5xl mx-auto w-full animate-in fade-in duration-300">
                         {/* CONTROLS BAR — SEARCH */}
                         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-6">
@@ -399,90 +465,143 @@ export default function StandingsPage() {
                             </span>
                         </div>
 
-                        {/* TABEL RESPONSIVE DENGAN STICKY COLUMNS */}
-                        <div className="bg-white border border-brand-border rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(24,24,27,0.05),0_10px_30px_-12px_rgba(86,27,29,0.12)] mb-12">
-                            <div className="overflow-x-auto relative">
-                                <table className="w-full text-left border-collapse min-w-[560px]">
-                                    <thead>
-                                        <tr className="bg-brand-bg-surface text-[10px] uppercase tracking-wider text-brand-muted font-black font-jetbrains border-b border-brand-border">
-                                            <th className="py-3.5 px-3 text-center w-12 sticky left-0 bg-brand-bg-surface z-20 border-r border-brand-border">Rank</th>
-                                            <th className="py-3.5 px-4 sticky left-[48px] bg-brand-bg-surface z-20 border-r border-brand-border">Klub / Tim</th>
-                                            <th className="py-3.5 px-2 text-center w-10">M</th>
-                                            <th className="py-3.5 px-2 text-center w-8">W</th>
-                                            <th className="py-3.5 px-2 text-center w-8">D</th>
-                                            <th className="py-3.5 px-2 text-center w-8">L</th>
-                                            <th className="py-3.5 px-2 text-center w-10">GD</th>
-                                            <th className="py-3.5 px-4 text-center w-14 font-black text-brand-primary bg-brand-gold/10">PTS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-xs font-medium">
-                                        {filteredLeaderboard.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={8} className="text-center py-16 text-brand-muted font-medium">
-                                                    Tidak ada klub yang cocok dengan kata kunci pencarian.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            filteredLeaderboard.map((team, index) => {
-                                                const rank = index + 1;
-
-                                                // ✨ Rank Podium Premium — gradient emas/perak/perunggu sesuai brand
-                                                const rankBadge =
-                                                    rank === 1 ? 'bg-gradient-to-br from-brand-gold to-brand-bronze text-white font-black shadow-brand animate-glow' :
-                                                        rank === 2 ? 'bg-gradient-to-br from-zinc-300 to-zinc-400 text-zinc-900 font-black shadow-sm' :
-                                                            rank === 3 ? 'bg-gradient-to-br from-brand-bronze to-brand-secondary text-white font-black shadow-sm' :
-                                                                'bg-brand-bg-surface text-brand-muted border border-brand-border';
-
-                                                const rowAccent = rank <= 3 ? 'bg-brand-gold/[0.03]' : '';
-
-                                                return (
-                                                    <tr key={team.id} className={`border-b border-brand-border last:border-b-0 hover:bg-brand-bg-surface/60 transition-colors ${rowAccent}`}>
-
-                                                        {/* Rank Sticky Column */}
-                                                        <td className="py-3 px-3 text-center sticky left-0 z-10 bg-white border-r border-brand-border">
-                                                            <span className={`inline-flex items-center justify-center gap-0.5 w-6 h-6 rounded-lg text-[10px] font-jetbrains ${rankBadge}`}>
-                                                                {rank === 1 ? <Crown size={11} className="fill-current" /> : rank}
-                                                            </span>
-                                                        </td>
-
-                                                        {/* Klub Sticky Column — crest disamakan dengan tab Grup */}
-                                                        <td className="py-3 px-4 sticky left-[48px] z-10 bg-white border-r border-brand-border">
-                                                            <div className="flex items-center gap-2.5">
-                                                                <span
-                                                                    className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black font-jetbrains text-white shrink-0 shadow-sm"
-                                                                    style={{ backgroundColor: getCrestColor(team.teamName) }}
-                                                                >
-                                                                    {getInitials(team.teamName)}
-                                                                </span>
-                                                                <span className="font-bold text-brand-dark truncate max-w-[140px]">
-                                                                    {team.teamName}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-
-                                                        {/* Statistik */}
-                                                        <td className="py-3 px-2 text-center text-brand-muted font-jetbrains font-semibold">{team.main}</td>
-                                                        <td className="py-3 px-2 text-center text-emerald-600 font-jetbrains font-bold">{team.menang}</td>
-                                                        <td className="py-3 px-2 text-center text-brand-muted font-jetbrains">{team.seri}</td>
-                                                        <td className="py-3 px-2 text-center text-red-500 font-jetbrains">{team.kalah}</td>
-
-                                                        <td className={`py-3 px-2 text-center font-jetbrains font-bold ${team.gd > 0 ? 'text-emerald-600' : team.gd < 0 ? 'text-red-500' : 'text-brand-muted'
-                                                            }`}>
-                                                            {team.gd > 0 ? `+${team.gd}` : team.gd}
-                                                        </td>
-
-                                                        {/* PTS Column (Highlighted) */}
-                                                        <td className="py-3 px-4 text-center font-black font-jetbrains text-sm bg-brand-gold/[0.06] text-brand-primary border-l border-brand-border">
-                                                            {team.poin}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                        {/* HEADER KOLOM — persis: # | TIM | M | W | D | L | GM | GK | GD | PTS */}
+                        <div className="grid grid-cols-12 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-brand-muted font-jetbrains">
+                            <div className="col-span-1">#</div>
+                            <div className="col-span-3">TIM</div>
+                            <div className="col-span-1 text-center">M</div>
+                            <div className="col-span-1 text-center">W</div>
+                            <div className="col-span-1 text-center">D</div>
+                            <div className="col-span-1 text-center">L</div>
+                            <div className="col-span-1 text-center">GM</div>
+                            <div className="col-span-1 text-center">GK</div>
+                            <div className="col-span-1 text-center">GD</div>
+                            <div className="col-span-1 text-center">PTS</div>
                         </div>
+
+                        {/* LIST KARTU LEADERBOARD */}
+                        <div className="flex flex-col gap-2 pb-16">
+                            {filteredLeaderboard.length === 0 ? (
+                                <div className="text-center py-16 text-brand-muted font-medium bg-white border border-brand-border rounded-xl shadow-sm">
+                                    Tidak ada klub yang cocok dengan kata kunci pencarian.
+                                </div>
+                            ) : (
+                                filteredLeaderboard.map((team, index) => {
+                                    const rank = index + 1;
+                                    const isTop3 = rank <= 3;
+
+                                    return (
+                                        <div
+                                            key={team.id}
+                                            className={`team-row relative grid grid-cols-12 items-center p-4 rounded-xl border overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 ${isTop3
+                                                ? 'bg-white border-brand-border shadow-sm'
+                                                : 'bg-brand-bg-surface/50 border-brand-border'
+                                                }`}
+                                        >
+                                            {/* Aksen emas kiri untuk Top 3 */}
+                                            {isTop3 && (
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-gold" />
+                                            )}
+
+                                            {/* # */}
+                                            <div className={`col-span-1 font-jetbrains text-xs ${isTop3 ? 'text-brand-gold font-bold' : 'text-brand-muted font-medium'
+                                                }`}>
+                                                {rank}
+                                            </div>
+
+                                            {/* TIM — crest kotak + nama */}
+                                            <div className="col-span-3 flex items-center gap-3">
+                                                <TeamCrest
+                                                    name={team.teamName}
+                                                    logoUrl={team.logoUrl}
+                                                    className="w-8 h-8"
+                                                    shape="square"
+                                                    textClassName="text-[9px]"
+                                                />
+                                                <span className={`text-xs truncate ${isTop3 ? 'font-bold' : 'font-medium'} text-brand-dark`}>
+                                                    {team.teamName}
+                                                </span>
+                                            </div>
+
+                                            {/* M / W / D / L / GM / GK / GD */}
+                                            <div className="col-span-1 text-center font-jetbrains text-xs text-brand-dark">{team.main}</div>
+                                            <div className="col-span-1 text-center font-jetbrains text-xs text-brand-dark">{team.menang}</div>
+                                            <div className="col-span-1 text-center font-jetbrains text-xs text-brand-dark">{team.seri}</div>
+                                            <div className="col-span-1 text-center font-jetbrains text-xs text-brand-dark">{team.kalah}</div>
+                                            <div className="col-span-1 text-center font-jetbrains text-xs text-brand-dark">{team.gm}</div>
+                                            <div className="col-span-1 text-center font-jetbrains text-xs text-brand-dark">{team.gk}</div>
+                                            <div className="col-span-1 text-center font-jetbrains text-xs text-brand-dark">{team.gd}</div>
+
+                                            {/* PTS */}
+                                            <div className="col-span-1 text-center font-jetbrains text-xs font-bold text-brand-primary">
+                                                {team.poin}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="max-w-3xl mx-auto w-full animate-in fade-in duration-300 pb-16">
+                        <div className="flex items-center justify-between mb-6">
+                            <span className="text-[11px] font-jetbrains font-bold text-brand-muted uppercase tracking-wide px-1">
+                                {topScorers.length} Tim Tercatat
+                            </span>
+                        </div>
+
+                        {topScorers.length === 0 ? (
+                            <div className="text-center py-16 text-brand-muted font-medium bg-white border border-brand-border rounded-xl shadow-sm">
+                                Belum ada data gol yang tercatat.
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                {topScorers.map((team, index) => {
+                                    const rank = index + 1;
+                                    const isTop3 = rank <= 3;
+
+                                    return (
+                                        <div
+                                            key={team.teamId}
+                                            className={`team-row relative grid grid-cols-12 items-center p-4 rounded-xl border overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 ${isTop3
+                                                ? 'bg-white border-brand-border shadow-sm'
+                                                : 'bg-brand-bg-surface/50 border-brand-border'
+                                                }`}
+                                        >
+                                            {/* Aksen emas kiri untuk Top 3 */}
+                                            {isTop3 && (
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-gold" />
+                                            )}
+
+                                            {/* # */}
+                                            <div className={`col-span-1 font-jetbrains text-xs ${isTop3 ? 'text-brand-gold font-bold' : 'text-brand-muted font-medium'
+                                                }`}>
+                                                {rank}
+                                            </div>
+
+                                            {/* TIM — crest kotak + nama */}
+                                            <div className="col-span-7 flex items-center gap-3">
+                                                <TeamCrest
+                                                    name={team.teamName}
+                                                    logoUrl={team.logoUrl}
+                                                    className="w-8 h-8"
+                                                    shape="square"
+                                                    textClassName="text-[9px]"
+                                                />
+                                                <span className={`text-xs truncate ${isTop3 ? 'font-bold' : 'font-medium'} text-brand-dark`}>
+                                                    {team.teamName}
+                                                </span>
+                                            </div>
+
+                                            {/* Total Gol */}
+                                            <div className="col-span-4 text-right font-jetbrains text-xs font-bold text-brand-primary">
+                                                {team.goalsFor} Goals
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

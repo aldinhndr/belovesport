@@ -3,7 +3,10 @@ export async function sendWaNotification(
   teamName: string,
   voucherCode: string,
   leaderName: string,
-  participantEmail: string
+  participantEmail: string,
+  // 🚀 UPDATE: Tambahkan parameter username dan password di akhir agar tidak merusak alur parameter lama
+  username: string,
+  password: string
 ) {
   // 1. Standarisasi format nomor HP ke kode negara '62'
   let formattedPhone = to.replace(/[^0-9]/g, '');
@@ -12,13 +15,15 @@ export async function sendWaNotification(
   }
 
   // 2. Template pesan resmi dengan kapitalisasi brand BELOVESPORT yang benar
-  const message = `*BELOVESPORT 2026 — PILOT SEASON*\n\n` +
+  const message = `*TOURNAMENT BELOVESPORT 2026 — S1*\n\n` +
     `Halo *${leaderName}*,\n` +
     `Selamat! Pendaftaran Tim *${teamName}* telah resmi *TERVERIFIKASI* oleh Admin.\n\n` +
     `Slot turnamen nasional Anda telah aman. Saat ini akun Command Center Anda telah aktif sepenuhnya.\n\n` +
     `🔑 *KREDENSIAL AKSES LOGIN:* \n` +
+    `• Username: \`@${username.replace('@', '')}\`\n` +
     `• Email: \`${participantEmail}\`\n` +
-    `• Metode: _Gunakan Magic Link OTP / Google Auth yang terdaftar_\n\n` +
+    `• Password: \`${password}\`\n\n` +
+    `_Catatan: Silakan gunakan Email/Username dan Password di atas untuk masuk._\n\n` +
     `🎫 *KODE VOUCHER ANDA:* \n` +
     `\`${voucherCode}\`\n\n` +
     `🌐 *LINK AKSES UTAMA:* \n` +
