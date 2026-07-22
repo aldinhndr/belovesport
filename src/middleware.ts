@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
                     return request.cookies.getAll();
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) =>
+                    cookiesToSet.forEach(({ name, value, options }) =>
                         request.cookies.set(name, value)
                     );
                     response = NextResponse.next({
@@ -44,7 +44,19 @@ export async function middleware(request: NextRequest) {
     const SUPER_ADMIN_EMAIL = "aldinhalawa2023@gmail.com"; 
     const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
-    // 🔑 BARIKADE 1: Protection untuk Halaman Admin
+    // 🔑 BARKADE 1: Gembok Pra-Peluncuran (Matikan sakelar jika sudah rilis resmi)
+    const isLockedBeforeLaunch = true; 
+
+    if (isLockedBeforeLaunch) {
+        // Jika web dikunci, block akses ke halaman dalam dan paksa ke halaman login/penangguhan
+        if (url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin')) {
+            url.pathname = '/login';
+            return NextResponse.redirect(url);
+        }
+    }
+
+    // 🔑 BARIKADE 2: Route Guard Otentikasi
+    // Jika ada yang coba masuk ke /admin, wajib login DAN wajib memiliki email Ko Aldin
     if (url.pathname.startsWith('/admin')) {
         if (!user || !isSuperAdmin) {
             url.pathname = '/login';
@@ -52,14 +64,14 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // 🔑 BARIKADE 2: Protection untuk Halaman Dashboard / Profile
-    if (!user && (url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/profil'))) {
+    // Perlindungan umum untuk /dashboard biasa (user umum wajib login)
+    if (!user && url.pathname.startsWith('/dashboard')) {
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
 
-    // 🔑 BARIKADE 3: Jika User Sudah Login, Cegah Buka Halaman Login/Register lagi
-    if (user && (url.pathname === '/login' || url.pathname === '/register' || url.pathname === '/signup')) {
+    if (user && url.pathname === '/login') {
+        // Jika yang login adalah Koko, lempar ke /admin, jika user biasa lempar ke /dashboard
         url.pathname = isSuperAdmin ? '/admin' : '/dashboard';
         return NextResponse.redirect(url);
     }
@@ -67,14 +79,16 @@ export async function middleware(request: NextRequest) {
     return response;
 }
 
-// ⚙️ MATCHER PRESISI: Lindungi HANYA Rute yang Membutuhkan Proteksi
+// ⚙️ FILTER FILTERING: Tentukan folder mana saja yang wajib dilindungi oleh middleware ini
 export const config = {
     matcher: [
         '/dashboard/:path*', 
-        '/admin/:path*',
-        '/profil/:path*',
+        '/api/:path*', 
         '/login',
+        '/forgot-password',
         '/register',
         '/signup',
+        '/tournament/:path*',
+        '/profil/:path*',
     ],
 };
