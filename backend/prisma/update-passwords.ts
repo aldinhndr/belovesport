@@ -23,7 +23,7 @@ const pool = new Pool({ connectionString: dbUrl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const TARGET_PASSWORD = 'BeloveSport26!';
+const TARGET_PASSWORD = 'BeloveSport2026!';
 
 async function main() {
   console.log('🔌 [DATABASE] Terhubung ke PostgreSQL.');
