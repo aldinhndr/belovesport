@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 🚀 ENGINE OPTIMIZATION: Kueri pencarian akun di Supabase Pooler
+    // 1. Kueri pencarian akun berdasarkan Username atau Email
     const participant = await prisma.participant.findFirst({
       where: { 
         OR: [
@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 🛠️ FIX SINTAKSIS: Menghapus kurung kurawal bocor di ujung baris lama
     if (!participant) {
       return NextResponse.json(
         { success: false, message: 'Akun tidak ditemukan.' }, 
@@ -37,7 +36,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isPasswordValid = await bcrypt.compare(password, participant.passwordHash);
+    // 2. Hybrid Password Matching (Plaintext & Bcrypt Hash Support)
+    let isPasswordValid = password === participant.passwordHash;
+
+    // Fallback: Jika tidak cocok langsung & format string di DB adalah Hash Bcrypt
+    if (!isPasswordValid && participant.passwordHash && participant.passwordHash.startsWith('$2')) {
+      try {
+        isPasswordValid = await bcrypt.compare(password, participant.passwordHash);
+      } catch {
+        isPasswordValid = false;
+      }
+    }
+
     if (!isPasswordValid) {
       return NextResponse.json(
         { success: false, message: 'Password salah.' }, 
@@ -45,6 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 3. Cek Status Verifikasi
     if (!participant.isVerified) {
       return NextResponse.json(
         { success: false, message: 'Akun belum diverifikasi. Cek email kamu untuk kode OTP.' },
@@ -52,13 +63,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 4. Buat JWT Session Token
     const token = await createParticipantSessionToken({
       participantId: participant.id,
       username: participant.username,
       role: 'participant',
     });
 
-    // Cek jumlah pendaftaran tim untuk menentukan arah navigasi frontend
+    // 5. Cek jumlah pendaftaran tim
     const teamCount = await prisma.registration.count({
       where: { participantId: participant.id },
     });

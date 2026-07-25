@@ -4,6 +4,11 @@
 .pnp.*
 .yarn/install-state.gz
 
+# env files
+.env
+.env.*
+!.env.example
+
 # testing
 /coverage
 
