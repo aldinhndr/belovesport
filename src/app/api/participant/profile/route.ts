@@ -4,24 +4,16 @@ import { prisma } from '@/lib/prisma';
 import { getParticipantSession } from '@/lib/participant-auth';
 
 export async function GET() {
+    // 🛡️ 1. Cek sesi login peserta
+    const session = await getParticipantSession();
+    if (!session) {
+        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        // 🛡️ 1. Cek Sesi Login
-        const session: any = await getParticipantSession();
-        if (!session) {
-            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-        }
+        const participantId = session.participantId;
 
-        // Ambil ID peserta secara fleksibel dari berbagai bentuk JWT Payload
-        const participantId = session.participantId || session.id || session.userId || session.sub;
-
-        if (!participantId) {
-            return NextResponse.json(
-                { success: false, message: 'Sesi tidak valid / ID tidak ditemukan.' },
-                { status: 401 }
-            );
-        }
-
-        // 🛡️ 2. Query Utama: Ambil DATA DASAR PARTICIPANT SAJA (Diisolasi agar anti-crash)
+        // 🛡️ 2. Tarik data dasar participant & registrasinya secara valid
         const participant = await prisma.participant.findUnique({
             where: { id: participantId },
             select: {
@@ -29,9 +21,16 @@ export async function GET() {
                 username: true,
                 email: true,
                 isVerified: true,
-                profilePictureUrl: true,
                 createdAt: true,
                 updatedAt: true,
+                registrations: {
+                    include: {
+                        vouchers: true
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }
             }
         });
 
@@ -39,57 +38,36 @@ export async function GET() {
             return NextResponse.json({ success: false, message: 'Profil tidak ditemukan.' }, { status: 404 });
         }
 
-        // 🛡️ 3. Query Tambahan 1: Ambil Registrations (Safe Try-Catch)
-        let registrations: any[] = [];
-        try {
-            registrations = await prisma.registration.findMany({
-                where: { participantId: participantId },
-                include: {
-                    vouchers: true
-                },
-                orderBy: {
-                    createdAt: 'desc'
-                }
-            });
-        } catch (regError) {
-            console.warn('[Profile Warning] Registrations query skipped:', regError);
-        }
+        // 🛡️ 3. Tarik data match secara terpisah melalui query tabel Match yang valid
+        // Mencari match di mana tim home ATAU tim away memiliki participantId yang sama
+        const matches = await prisma.match.findMany({
+            where: {
+                OR: [
+                    { homeTeam: { participantId: participantId } },
+                    { awayTeam: { participantId: participantId } }
+                ]
+            },
+            include: {
+                homeTeam: true,
+                awayTeam: true
+            },
+            orderBy: {
+                scheduledTime: 'desc'
+            }
+        });
 
-        // 🛡️ 4. Query Tambahan 2: Ambil Matches (Safe Try-Catch)
-        let matches: any[] = [];
-        try {
-            matches = await prisma.match.findMany({
-                where: {
-                    OR: [
-                        { homeTeam: { participantId: participantId } },
-                        { awayTeam: { participantId: participantId } }
-                    ]
-                },
-                include: {
-                    homeTeam: true,
-                    awayTeam: true
-                },
-                orderBy: {
-                    scheduledTime: 'desc'
-                }
-            });
-        } catch (matchError) {
-            console.warn('[Profile Warning] Match query skipped:', matchError);
-        }
-
-        // 🛡️ 5. Gabungkan menjadi satu respons JSON utuh
+        // 🛡️ 4. Gabungkan datanya agar struktur respons tetap kompatibel dengan frontend Koko
         const profileData = {
             ...participant,
-            registrations,
-            matches
+            matches: matches // Menyisipkan data matches hasil query terpisah
         };
 
         return NextResponse.json({ success: true, data: profileData }, { status: 200 });
 
     } catch (error: any) {
-        console.error('CRITICAL ERROR in GET /api/participant/profile:', error);
+        console.error('Error fetching participant profile:', error);
         return NextResponse.json(
-            { success: false, message: 'Terjadi kesalahan server saat mengambil data profil.' },
+            { success: false, message: 'Terjadi kesalahan internal pada server database.' },
             { status: 500 }
         );
     }
