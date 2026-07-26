@@ -4,14 +4,22 @@ import { prisma } from '@/lib/prisma';
 import { getParticipantSession } from '@/lib/participant-auth';
 
 export async function GET() {
-    // 🛡️ 1. Cek sesi login peserta
-    const session = await getParticipantSession();
-    if (!session) {
-        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-    }
-
     try {
-        const participantId = session.participantId;
+        // 🛡️ 1. Cek sesi login peserta
+        const session: any = await getParticipantSession();
+        if (!session) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Ambil ID peserta secara fleksibel (mendukung participantId, id, userId, atau sub)
+        const participantId = session.participantId || session.id || session.userId || session.sub;
+
+        if (!participantId) {
+            return NextResponse.json(
+                { success: false, message: 'Sesi tidak valid / ID tidak ditemukan.' },
+                { status: 401 }
+            );
+        }
 
         // 🛡️ 2. Tarik data dasar participant & registrasinya secara valid
         const participant = await prisma.participant.findUnique({
@@ -21,6 +29,7 @@ export async function GET() {
                 username: true,
                 email: true,
                 isVerified: true,
+                profilePictureUrl: true,
                 createdAt: true,
                 updatedAt: true,
                 registrations: {
@@ -38,28 +47,33 @@ export async function GET() {
             return NextResponse.json({ success: false, message: 'Profil tidak ditemukan.' }, { status: 404 });
         }
 
-        // 🛡️ 3. Tarik data match secara terpisah melalui query tabel Match yang valid
-        // Mencari match di mana tim home ATAU tim away memiliki participantId yang sama
-        const matches = await prisma.match.findMany({
-            where: {
-                OR: [
-                    { homeTeam: { participantId: participantId } },
-                    { awayTeam: { participantId: participantId } }
-                ]
-            },
-            include: {
-                homeTeam: true,
-                awayTeam: true
-            },
-            orderBy: {
-                scheduledTime: 'desc'
-            }
-        });
+        // 🛡️ 3. Tarik data match dengan Try-Catch terisolasi agar tidak menggagalkan seluruh API jika belum ada match
+        let matches: any[] = [];
+        try {
+            matches = await prisma.match.findMany({
+                where: {
+                    OR: [
+                        { homeTeam: { participantId: participantId } },
+                        { awayTeam: { participantId: participantId } }
+                    ]
+                },
+                include: {
+                    homeTeam: true,
+                    awayTeam: true
+                },
+                orderBy: {
+                    scheduledTime: 'desc'
+                }
+            });
+        } catch (matchError) {
+            console.warn('[Profile Warning] Match query skipped or empty:', matchError);
+            matches = [];
+        }
 
-        // 🛡️ 4. Gabungkan datanya agar struktur respons tetap kompatibel dengan frontend Koko
+        // 🛡️ 4. Gabungkan datanya
         const profileData = {
             ...participant,
-            matches: matches // Menyisipkan data matches hasil query terpisah
+            matches: matches
         };
 
         return NextResponse.json({ success: true, data: profileData }, { status: 200 });
