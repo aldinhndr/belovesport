@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Loader2, Mail, Lock, LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserClient } from '@supabase/ssr';
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
     oauth_failed: 'Login Google gagal diproses. Silakan coba lagi.',
@@ -25,7 +25,8 @@ function LoginContent() {
     const isLockedBeforeLaunch = false;
 
     useEffect(() => {
-        const oauthError = searchParams.get('error');
+        // 🛡️ Safe SearchParams Check untuk mencegah White Screen
+        const oauthError = searchParams?.get('error');
         if (oauthError) {
             setError(OAUTH_ERROR_MESSAGES[oauthError] ?? 'Terjadi kesalahan saat login. Coba lagi.');
         }
@@ -43,9 +44,13 @@ function LoginContent() {
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
-                setError(data.message ?? 'Login gagal. Periksa kembali email/username dan password.');
+                const errorMsg = typeof data.message === 'string'
+                    ? data.message
+                    : 'Login gagal. Periksa kembali email/username dan password.';
+                setError(errorMsg);
                 return;
             }
+            // 🚀 RULES ENFORCEMENT: Arahkan ke /profil jika punya tim, atau ke /register jika belum punya tim
             router.push(data.hasTeam ? '/profil' : '/register');
             router.refresh();
         } catch {
@@ -69,14 +74,12 @@ function LoginContent() {
             const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
             if (!url || !anonKey) {
-                setError('Kunci API Supabase gagal dimuat. Sila restart server dev Koko (npm run dev) atau periksa file .env.');
+                setError('Kunci API Supabase gagal dimuat. Sila periksa variabel .env.');
                 setIsGoogleLoading(false);
                 return;
             }
 
-            // 🚀 KUNCI KEMENANGAN: Gunakan Browser Client resmi dari @supabase/ssr
-            // Ini otomatis mengelola cookie PKCE code verifier tanpa perlu kodingan manual yang rentan bug!
-            const directSupabase = createBrowserClient(url, anonKey)
+            const directSupabase = createBrowserClient(url, anonKey);
 
             const { error: oauthError } = await directSupabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -102,7 +105,6 @@ function LoginContent() {
 
     return (
         <div className="min-h-screen bg-brand-bg-light flex items-center justify-center px-4 sm:px-6 py-12 relative overflow-hidden text-brand-dark select-none">
-            {/* Ambient Background Glow Premium[cite: 2] */}
             <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/30 to-transparent z-40" />
             <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] sm:w-[600px] md:w-[900px] h-[320px] sm:h-[500px] rounded-full opacity-[0.07] pointer-events-none blur-[60px] sm:blur-[120px]"
@@ -111,8 +113,6 @@ function LoginContent() {
             />
 
             <div className="w-full max-w-md relative z-10 animate-in fade-in zoom-in-95 duration-300">
-
-                {/* BRAND LOGO MINIMALIST & HEADER */}
                 <div className="text-center mb-8 flex flex-col items-center">
                     <Link
                         href="/"
@@ -138,7 +138,6 @@ function LoginContent() {
                     </h1>
                 </div>
 
-                {/* FORM CONTAINER (Menggunakan border-slate-300 bawaan agar garis kotak tegas) */}
                 <div className="bg-white/70 backdrop-blur-xl border border-slate-300 rounded-2xl sm:rounded-3xl p-6 sm:p-10 shadow-xl shadow-black/[0.02] relative overflow-hidden">
                     <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent" />
 

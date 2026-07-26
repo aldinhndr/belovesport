@@ -5,8 +5,6 @@ import { getParticipantSession } from '@/lib/participant-auth';
 import { prisma } from '@/lib/prisma';
 import LogoutButtonParticipant from '@/components/participant/LogoutButton';
 import ProfileTabsContent from './ProfileTabsContent';
-
-// 🚀 IMPORT ENGINE SKOR TERPUSAT Ko!
 import { calculateMatchResult } from '@/lib/tournament';
 
 import {
@@ -15,13 +13,12 @@ import {
     BadgeCheck, Hash
 } from 'lucide-react';
 
-// Batas maksimal slot tim per akun peserta (sesuaikan dengan aturan turnamen aktif)
 const MAX_TEAM_SLOTS = 5;
 
 export default async function ProfilPage() {
+    // 🛡️ 1. Proteksi Sisi Server: Wajib Memiliki Sesi Login
     const session = await getParticipantSession();
-
-    if (!session) return null;
+    if (!session) redirect('/login');
 
     const participant = await prisma.participant.findUnique({
         where: { id: session.participantId },
@@ -37,11 +34,17 @@ export default async function ProfilPage() {
 
     if (!participant) redirect('/login');
 
+    // 🛡️ 2. Proteksi Sisi Server: Ambil Tim Peserta
     const myTeams = await prisma.registration.findMany({
-        where: { participantId: session.participantId },
+        where: { participantId: participant.id },
         include: { vouchers: true },
         orderBy: { id: 'desc' }
     });
+
+    // 🚀 RULES ENFORCEMENT: Jika user tidak memiliki tim terdaftar, paksa ke /register
+    if (myTeams.length === 0) {
+        redirect('/register');
+    }
 
     const teamIds = myTeams.map(t => t.id);
     let matches: any[] = [];
@@ -62,15 +65,15 @@ export default async function ProfilPage() {
             orderBy: { scheduledTime: 'asc' }
         });
 
-        // 🚀 REFACTOR: Gunakan fungsi tunggal terpusat agar DRY seutuhnya!
         matches.forEach(m => {
             const result = calculateMatchResult(m, teamIds);
             if (result.isCompleted) {
                 stats.main += 1;
                 const isHome = teamIds.includes(m.homeTeamId || '');
 
-                // Tambahkan akumulasi gol tim Koko (Leg 1 + Leg 2)
-                stats.gol += isHome ? (m.homeScoreLeg1 || 0) + (m.homeScoreLeg2 || 0) : (m.awayScoreLeg1 || 0) + (m.awayScoreLeg2 || 0);
+                stats.gol += isHome
+                    ? (m.homeScoreLeg1 || 0) + (m.homeScoreLeg2 || 0)
+                    : (m.awayScoreLeg1 || 0) + (m.awayScoreLeg2 || 0);
 
                 if (result.isWin) stats.menang += 1;
                 else if (result.isLoss) stats.kalah += 1;
@@ -114,7 +117,6 @@ export default async function ProfilPage() {
                         </button>
                         <div className="w-9 h-9 rounded-full border-2 border-brand-gold overflow-hidden shrink-0 bg-brand-bg-surface flex items-center justify-center">
                             {participant.profilePictureUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                     src={participant.profilePictureUrl}
                                     alt={`Foto profil ${participant.username}`}
@@ -140,7 +142,6 @@ export default async function ProfilPage() {
                         <div className="relative shrink-0">
                             <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-4 border-brand-bg-surface shadow-lg flex items-center justify-center bg-gradient-to-br from-brand-bg-surface to-white">
                                 {participant.profilePictureUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                         src={participant.profilePictureUrl}
                                         alt={`Foto profil ${participant.username}`}
@@ -207,7 +208,6 @@ export default async function ProfilPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
                     {/* SIDEBAR KIRI */}
                     <aside className="space-y-6 w-full lg:w-[280px]">
-                        {/* IDENTITY WIDGET: VERIFIED PARTICIPANT */}
                         <div className="rounded-2xl bg-white border border-brand-border p-5 shadow-sm">
                             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-brand-border">
                                 <BadgeCheck size={18} className="text-brand-gold" />
@@ -235,7 +235,7 @@ export default async function ProfilPage() {
                             </ul>
                         </div>
 
-                        {/* CIRCUIT STATS GRID */}
+                        {/* STATISTIK SIRKUIT */}
                         {myTeams.length > 0 && (
                             <div className="rounded-2xl bg-white border border-brand-border p-5 shadow-sm">
                                 <h3 className="text-xs font-black text-brand-dark uppercase tracking-tight mb-4">Statistik Sirkuit</h3>

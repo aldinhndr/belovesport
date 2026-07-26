@@ -34,7 +34,8 @@ function RegisterContent() {
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
     useEffect(() => {
-        const oauthError = searchParams.get('error');
+        // 🛡️ Safe SearchParams Optional Chaining Check
+        const oauthError = searchParams?.get('error');
         if (oauthError) {
             setError(OAUTH_ERROR_MESSAGES[oauthError] ?? 'Terjadi kesalahan saat login. Coba lagi.');
         }
@@ -62,16 +63,18 @@ function RegisterContent() {
             const data = await res.json();
 
             if (!res.ok || !data.success) {
-                setError(data.message ?? 'Registrasi gagal. Periksa kembali data Anda.');
+                const errorMsg = typeof data.message === 'string'
+                    ? data.message
+                    : 'Registrasi gagal. Periksa kembali data Anda.';
+                setError(errorMsg);
                 setIsLoading(false);
                 return;
             }
 
-            // AUTO-LOGIN SUCCESS
-            setSuccessMsg('Akun berhasil dibuat! Mengalihkan ke dasbor...');
+            // 🚀 RULES ENFORCEMENT: Akun baru wajib diarahkan ke /register untuk mendaftarkan Tim
+            setSuccessMsg('Akun berhasil dibuat! Mengalihkan ke formulir pendaftaran tim...');
             setTimeout(() => {
-                // Langsung ke halaman profil/dasbor
-                router.push('/profil');
+                router.push('/register');
                 router.refresh();
             }, 1000);
         } catch {
@@ -102,7 +105,6 @@ function RegisterContent() {
 
     return (
         <div className="min-h-screen bg-brand-bg-light flex items-center justify-center px-4 sm:px-6 py-12 relative overflow-hidden text-brand-dark select-none">
-            {/* Ambient Background Glow Premium[cite: 2] */}
             <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/30 to-transparent z-40" />
             <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] sm:w-[600px] md:w-[900px] h-[320px] sm:h-[500px] rounded-full opacity-[0.07] pointer-events-none blur-[60px] sm:blur-[120px]"
@@ -111,8 +113,6 @@ function RegisterContent() {
             />
 
             <div className="w-full max-w-md relative z-10 animate-in fade-in zoom-in-95 duration-300">
-
-                {/* BRAND LOGO MINIMALIST & HEADER */}
                 <div className="text-center mb-8 flex flex-col items-center">
                     <Link
                         href="/"
@@ -141,7 +141,6 @@ function RegisterContent() {
                     </p>
                 </div>
 
-                {/* FORM CONTAINER (Menggunakan border-slate-300 bawaan agar garis kotak tegas) */}
                 <div className="bg-white/70 backdrop-blur-xl border border-slate-300 rounded-2xl sm:rounded-3xl p-6 sm:p-10 shadow-xl shadow-black/[0.02] relative overflow-hidden">
                     <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent" />
 
@@ -230,7 +229,7 @@ function RegisterContent() {
                             disabled={isLoading || isGoogleLoading}
                             className="w-full mt-2 bg-gradient-brand text-white hover:brightness-105 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed font-black font-jetbrains text-xs uppercase tracking-widest rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-gold/10"
                         >
-                            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <><UserPlus size={15} /> Buat Akun</>}
+                            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <><UserPlus size={15} /> Buat Akun & Lanjut</>}
                         </button>
                     </form>
 
@@ -250,7 +249,7 @@ function RegisterContent() {
                             <Loader2 size={16} className="animate-spin text-zinc-400" />
                         ) : (
                             <>
-                                <svg xmlns="http://www.w3.org/2000/xl" viewBox="0 0 48 48" className="w-4 h-4 shrink-0" aria-hidden>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 shrink-0" aria-hidden>
                                     <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
                                     <path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z" />
                                     <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.222 0-9.654-3.343-11.303-8l-6.571 4.819C9.656 39.663 16.318 44 24 44z" />
