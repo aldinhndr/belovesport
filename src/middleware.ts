@@ -1,94 +1,54 @@
 // Path: src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 
-export async function middleware(request: NextRequest) {
-    let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
-    });
+export function middleware(request: NextRequest) {
+    const url = request.nextUrl.clone();
+    const pathname = url.pathname;
 
-    // 1. Inisialisasi Supabase Server Client untuk membaca sesi otentikasi secara real-time
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return request.cookies.getAll();
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        request.cookies.set(name, value)
-                    );
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    });
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        response.cookies.set(name, value, options)
-                    );
-                },
-            },
-        }
+    // 1. Ambil Session Cookie (Prisma Participant JWT & Supabase Auth Cookie)
+    const participantToken = request.cookies.get('participant_session')?.value;
+    
+    // Cek keberadaan cookie Supabase tanpa memanggil SDK heavy-fetch
+    const hasSupabaseSession = request.cookies.getAll().some(
+        (c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token')
     );
 
-    // Ambil data user yang sedang aktif dari sesi cookie
-    const { data: { user } } = await supabase.auth.getUser();
-    const url = request.nextUrl.clone();
+    const isAuthenticated = Boolean(participantToken || hasSupabaseSession);
 
-    // 🎯 Email khusus Ko Aldin sebagai Super Admin
-    const SUPER_ADMIN_EMAIL = "aldinhalawa2023@gmail.com"; 
-    const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
-
-    // 🔑 BARKADE 1: Gembok Pra-Peluncuran (Matikan sakelar jika sudah rilis resmi)
-    const isLockedBeforeLaunch = true; 
+    // 🔑 BARIKADE 1: Gembok Pra-Peluncuran (Ubah ke false jika aplikasi sudah rilis)
+    const isLockedBeforeLaunch = false; 
 
     if (isLockedBeforeLaunch) {
-        // Jika web dikunci, block akses ke halaman dalam dan paksa ke halaman login/penangguhan
-        if (url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin')) {
+        if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
             url.pathname = '/login';
             return NextResponse.redirect(url);
         }
     }
 
-    // 🔑 BARIKADE 2: Route Guard Otentikasi
-    // Jika ada yang coba masuk ke /admin, wajib login DAN wajib memiliki email Ko Aldin
-    if (url.pathname.startsWith('/admin')) {
-        if (!user || !isSuperAdmin) {
-            url.pathname = '/login';
-            return NextResponse.redirect(url);
-        }
-    }
-
-    // Perlindungan umum untuk /dashboard biasa (user umum wajib login)
-    if (!user && url.pathname.startsWith('/dashboard')) {
+    // 🔑 BARIKADE 2: Route Guard /admin & /dashboard /profil
+    if (!isAuthenticated && (pathname.startsWith('/dashboard') || pathname.startsWith('/profil') || pathname.startsWith('/admin'))) {
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
 
-    if (user && url.pathname === '/login') {
-        // Jika yang login adalah Koko, lempar ke /admin, jika user biasa lempar ke /dashboard
-        url.pathname = isSuperAdmin ? '/admin' : '/dashboard';
+    // Redirect jika user sudah login tetapi mencoba membuka halaman /login /register /signup
+    if (isAuthenticated && (pathname === '/login' || pathname === '/register' || pathname === '/signup')) {
+        url.pathname = '/profil';
         return NextResponse.redirect(url);
     }
 
-    return response;
+    return NextResponse.next();
 }
 
-// ⚙️ FILTER FILTERING: Tentukan folder mana saja yang wajib dilindungi oleh middleware ini
+// ⚙️ MATCHER: Tentukan halaman mana saja yang melewati guard ini
 export const config = {
     matcher: [
         '/dashboard/:path*', 
-        '/api/:path*', 
+        '/admin/:path*',
+        '/profil/:path*',
         '/login',
-        '/forgot-password',
         '/register',
         '/signup',
-        '/tournament/:path*',
-        '/profil/:path*',
     ],
 };

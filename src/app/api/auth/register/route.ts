@@ -1,10 +1,11 @@
 // Path: src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { createOtp } from '@/lib/otp';
-import { sendOtpEmail } from '@/lib/email';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'belovesport-secret-key-2026';
 
 // 1. Definisikan Schema Validasi Ketat dengan Zod
 const registerSchema = z.object({
@@ -28,41 +29,78 @@ export async function POST(request: NextRequest) {
     const validation = registerSchema.safeParse(body);
     
     if (!validation.success) {
-      // Tangkap pesan error pertama yang paling spesifik berdasarkan aturan di atas
       const firstErrorMessage = validation.error.issues[0].message;
       return NextResponse.json({ success: false, message: firstErrorMessage }, { status: 400 });
     }
 
-    // Ekstrak data yang sudah 100% steril dan valid
+    // Ekstrak data yang sudah steril dan valid
     const { username, email, password } = validation.data;
 
-    // 3. Cek duplikasi akun pada model participant
-    const existing = await prisma.participant.findFirst({ 
-      where: { OR: [{ username }, { email }] } 
+    // 3. Cek spesifik duplikasi email / username
+    const existingEmail = await prisma.participant.findUnique({
+      where: { email },
     });
-    
-    if (existing) {
-      return NextResponse.json({ success: false, message: 'Username atau email sudah terdaftar.' }, { status: 409 });
+
+    if (existingEmail) {
+      return NextResponse.json(
+        { success: false, message: 'Email ini sudah terdaftar. Silakan langsung login.' },
+        { status: 409 }
+      );
     }
 
-    // 4. Proses Hashing & Simpan ke Database
-    const passwordHash = await bcrypt.hash(password, 12);
-    const participant = await prisma.participant.create({
-      data: { username, email, passwordHash, isVerified: false },
+    const existingUsername = await prisma.participant.findFirst({
+      where: { username },
     });
 
-    // 5. Trigger Sistem OTP & Email
-    const code = await createOtp(email, 'REGISTRATION');
-    await sendOtpEmail(email, code, 'REGISTRATION');
+    if (existingUsername) {
+      return NextResponse.json(
+        { success: false, message: 'Username/Nickname sudah terpakai. Pilih username lain.' },
+        { status: 409 }
+      );
+    }
 
-    return NextResponse.json(
+    // 4. Hashing Password & Simpan ke Database (Directly Verified)
+    const passwordHash = await bcrypt.hash(password, 12);
+    const participant = await prisma.participant.create({
+      data: {
+        username,
+        email,
+        passwordHash,
+        isVerified: true, // Auto-verified tanpa OTP
+      },
+    });
+
+    // 5. Generate Token Cookie Session untuk Instant Auto-Login
+    const token = jwt.sign(
+      {
+        id: participant.id,
+        email: participant.email,
+        username: participant.username,
+        role: 'PARTICIPANT',
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // 6. Respon & Set Cookie Session
+    const response = NextResponse.json(
       {
         success: true,
-        message: 'Akun dibuat. Cek email kamu untuk kode verifikasi.',
+        message: 'Akun berhasil dibuat! Mengalihkan ke dasbor...',
         data: { participantId: participant.id, email: participant.email },
       },
       { status: 201 }
     );
+
+    response.cookies.set('participant_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // Valid 7 Hari
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Register Participant Error:', error);
     return NextResponse.json({ success: false, message: 'Terjadi kesalahan server.' }, { status: 500 });

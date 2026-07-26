@@ -67,10 +67,13 @@ function RegisterContent() {
                 return;
             }
 
-            setSuccessMsg('Akun berhasil dibuat! Mengalihkan ke verifikasi...');
+            // AUTO-LOGIN SUCCESS
+            setSuccessMsg('Akun berhasil dibuat! Mengalihkan ke dasbor...');
             setTimeout(() => {
-                router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
-            }, 1500);
+                // Langsung ke halaman profil/dasbor
+                router.push('/profil');
+                router.refresh();
+            }, 1000);
         } catch {
             setError('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
             setIsLoading(false);

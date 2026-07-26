@@ -1,88 +1,96 @@
-// Path: src/app/api/register/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getParticipantSession } from '@/lib/participant-auth';
+import jwt from 'jsonwebtoken';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 
-export async function POST(request: NextRequest) {
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+const JWT_SECRET = process.env.JWT_SECRET || 'belovesport-secret-key-2026';
+
+export async function POST(req: NextRequest) {
   try {
-    // 1. Amankan Sesi Peserta (Siapa yang sedang mencoba mendaftar?)
-    const session = await getParticipantSession();
-    if (!session || !session.participantId) {
+    const { username, email, password } = await req.json();
+
+    if (!username || !email || !password) {
       return NextResponse.json(
-        { error: 'Sesi tidak valid. Silakan login kembali.' },
-        { status: 401 }
-      );
-    }
-
-    // 2. Tarik Data Profil Asli Koko dari Database (Untuk mendapatkan email)
-    const currentUser = await prisma.participant.findUnique({
-      where: { id: session.participantId },
-      select: { email: true }
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Akun tidak ditemukan di sistem.' }, { status: 404 });
-    }
-
-    // 3. Tangkap Payload dari Frontend (Sudah TIDAK ADA variabel email dari frontend)
-    const body = await request.json();
-    const {
-      fullName,
-      whatsappNumber,
-      teamName,
-      eFootballId,
-      domisili,
-      device,
-      instagramHandle,
-      paymentMethod,
-      screenshotBase64,
-    } = body;
-
-    // 4. Validasi Kelengkapan Data Baru (Tanpa mengecek !email)
-    if (!fullName || !whatsappNumber || !teamName || !eFootballId || !domisili || !device || !instagramHandle || !paymentMethod || !screenshotBase64) {
-      return NextResponse.json(
-        { error: 'Data registrasi tidak lengkap. Pastikan semua field dan bukti transfer telah diunggah.' },
+        { success: false, message: 'Username, email, dan password wajib diisi.' },
         { status: 400 }
       );
     }
 
-    const orderId = `BLV-${Date.now()}`;
+    // 1. Cek Spesifik Duplikasi Email
+    const existingEmail = await prisma.participant.findUnique({
+      where: { email },
+    });
 
-    // 5. Masukkan ke Database & Ikat dengan Profil User
-    // (Voucher TIDAK dibuat di sini, menunggu Admin Approve)
-    const newRegistration = await prisma.registration.create({
+    if (existingEmail) {
+      return NextResponse.json(
+        { success: false, message: 'Email ini sudah terdaftar. Silakan langsung login.' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Cek Spesifik Duplikasi Username
+    const existingUsername = await prisma.participant.findFirst({
+      where: { username },
+    });
+
+    if (existingUsername) {
+      return NextResponse.json(
+        { success: false, message: 'Username/Nickname sudah terpakai. Pilih username lain.' },
+        { status: 400 }
+      );
+    }
+
+    // 3. Buat Account Baru (Langsung isVerified: true, tanpa panggil Resend OTP)
+    const newParticipant = await prisma.participant.create({
       data: {
-        teamName,
-        leaderName: fullName,
-        email: currentUser.email, // Menggunakan email asli yang didapat dari sesi database!
-        whatsappNumber,
-        efootballId: eFootballId,
-        domisili,
-        device,
-        instagramHandle,
-        paymentMethod,
-        paymentProofUrl: screenshotBase64,
-        status: 'PENDING',
-        participantId: session.participantId, // ── IKATAN RELASI PROFIL ──
+        username,
+        email,
+        passwordHash: password,
+        isVerified: true,
       },
     });
 
-    return NextResponse.json(
+    // 4. Generate Token Cookie Session
+    const token = jwt.sign(
       {
-        success: true,
-        message: 'Pendaftaran berhasil diterima. Menunggu verifikasi pembayaran oleh admin (estimasi 1x24 jam).',
-        orderId,
-        data: {
-          id: newRegistration.id,
-          teamName: newRegistration.teamName,
-          status: newRegistration.status,
-        },
+        id: newParticipant.id,
+        email: newParticipant.email,
+        username: newParticipant.username,
+        role: 'PARTICIPANT',
       },
-      { status: 201 }
+      JWT_SECRET,
+      { expiresIn: '7d' }
     );
-  } catch (error: any) {
-    console.error('API /register Error (Manual System):', error);
-    return NextResponse.json({ error: 'Gagal memproses data pendaftaran di server.' }, { status: 500 });
+
+    const response = NextResponse.json({
+      success: true,
+      message: 'Registrasi berhasil dan langsung login.',
+      data: {
+        id: newParticipant.id,
+        username: newParticipant.username,
+        email: newParticipant.email,
+      },
+    });
+
+    response.cookies.set('participant_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Register Error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Terjadi kesalahan sistem.' },
+      { status: 500 }
+    );
   }
 }

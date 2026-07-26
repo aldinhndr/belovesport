@@ -1,10 +1,9 @@
-// Path: src/app/profil/edit/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Save, Bell, Loader2, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, User, Save, Bell, Loader2, Mail, CheckCircle2, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react';
 import LogoutButtonParticipant from '@/components/participant/LogoutButton';
 
 export default function EditProfilPage() {
@@ -13,19 +12,23 @@ export default function EditProfilPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    // State Data Profil
+    // Toggle visibility password
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+
+    // State Data Profil & Password
     const [formData, setFormData] = useState({
         username: '',
-        email: '', // Email biasanya di-lock, tapi kita tampilkan
-        // Silakan tambah state lain jika ada di DB (misal: phone, nama lengkap)
+        email: '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
     });
 
     // Tarik data profil saat ini
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                // Endpoint ini opsional, gunakan endpoint get profile Koko saat ini
-                // Atau kita bisa asumsikan ambil dari API get participant
                 const res = await fetch('/api/participant/profile', { credentials: 'include' });
 
                 if (res.status === 401) {
@@ -35,10 +38,11 @@ export default function EditProfilPage() {
 
                 const data = await res.json();
                 if (data.success && data.data) {
-                    setFormData({
+                    setFormData((prev) => ({
+                        ...prev,
                         username: data.data.username || '',
                         email: data.data.email || '',
-                    });
+                    }));
                 }
             } catch (error) {
                 console.error("Gagal memuat profil:", error);
@@ -59,22 +63,50 @@ export default function EditProfilPage() {
         setIsSaving(true);
         setStatusMsg(null);
 
+        // Validasi password lokal
+        if (formData.newPassword || formData.confirmPassword || formData.currentPassword) {
+            if (!formData.currentPassword) {
+                setStatusMsg({ type: 'error', text: 'Password saat ini wajib diisi untuk mengubah password.' });
+                setIsSaving(false);
+                return;
+            }
+            if (formData.newPassword.length < 8) {
+                setStatusMsg({ type: 'error', text: 'Password baru minimal harus 8 karakter.' });
+                setIsSaving(false);
+                return;
+            }
+            if (formData.newPassword !== formData.confirmPassword) {
+                setStatusMsg({ type: 'error', text: 'Konfirmasi password baru tidak cocok.' });
+                setIsSaving(false);
+                return;
+            }
+        }
+
         try {
-            // Panggil API update profil Koko di sini
             const res = await fetch('/api/participant/update-profile', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ username: formData.username })
+                body: JSON.stringify({
+                    username: formData.username,
+                    currentPassword: formData.currentPassword || undefined,
+                    newPassword: formData.newPassword || undefined,
+                })
             });
 
             const data = await res.json();
 
             if (data.success) {
-                setStatusMsg({ type: 'success', text: 'Profil berhasil diperbarui!' });
+                setStatusMsg({ type: 'success', text: 'Profil dan password berhasil diperbarui!' });
+                setFormData((prev) => ({
+                    ...prev,
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                }));
                 setTimeout(() => {
                     router.push('/profil');
-                    router.refresh(); // Memaksa halaman profil menarik data terbaru
+                    router.refresh();
                 }, 1500);
             } else {
                 setStatusMsg({ type: 'error', text: data.message || 'Gagal memperbarui profil.' });
@@ -88,7 +120,7 @@ export default function EditProfilPage() {
 
     return (
         <div className="min-h-screen bg-brand-bg-light text-brand-dark relative overflow-hidden pb-20 flex flex-col">
-            {/* 🌟 EFEK CAHAYA & BACKGROUND PREMIUM */}
+            {/* EFEK CAHAYA & BACKGROUND PREMIUM */}
             <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/60 to-transparent z-40" />
             <div
                 className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.08] pointer-events-none blur-[110px]"
@@ -101,7 +133,7 @@ export default function EditProfilPage() {
                 backgroundSize: '20px 20px'
             }} />
 
-            {/* 🌟 TOP NAVBAR GLOBAL */}
+            {/* TOP NAVBAR GLOBAL */}
             <nav className="sticky top-0 z-50 border-b border-brand-border bg-brand-bg-light/85 backdrop-blur-xl shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -133,7 +165,7 @@ export default function EditProfilPage() {
                 </div>
             </nav>
 
-            {/* 🌟 SUB-HEADER */}
+            {/* SUB-HEADER */}
             <div className="relative z-20 pt-10 pb-6 px-5 max-w-2xl mx-auto w-full text-center md:text-left">
                 <div className="flex flex-col md:flex-row items-center gap-4">
                     <Link href="/profil" className="p-2.5 rounded-xl transition-all group bg-white border border-brand-border hover:border-brand-gold shadow-sm hidden md:block">
@@ -153,7 +185,7 @@ export default function EditProfilPage() {
                 </div>
             </div>
 
-            {/* 🌟 KONTEN FORM */}
+            {/* KONTEN FORM */}
             <div className="relative z-10 w-full flex-1 max-w-2xl mx-auto px-4 sm:px-6 mt-4">
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-20">
@@ -164,40 +196,120 @@ export default function EditProfilPage() {
                     <div className="bg-white border border-brand-border rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-sm">
                         <form onSubmit={handleSave} className="space-y-6">
 
-                            {/* Input Username */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
-                                    <User size={14} className="text-brand-primary" /> Username / Nickname
-                                </label>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full bg-brand-bg-surface border border-brand-border rounded-xl px-4 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
-                                    placeholder="Masukkan Nickname"
-                                />
+                            {/* Section 1: Informasi Dasar */}
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-black tracking-widest uppercase text-brand-primary font-jetbrains border-b border-brand-border pb-2">
+                                    Informasi Dasar
+                                </h3>
+
+                                {/* Input Username */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
+                                        <User size={14} className="text-brand-primary" /> Username / Nickname
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="username"
+                                        value={formData.username}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full bg-brand-bg-surface border border-brand-border rounded-xl px-4 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                        placeholder="Masukkan Nickname"
+                                    />
+                                </div>
+
+                                {/* Input Email (Read Only) */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
+                                        <Mail size={14} className="text-brand-muted" /> Alamat Email <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full ml-auto">Terkunci</span>
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        disabled
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm text-slate-500 font-medium cursor-not-allowed"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Input Email (Read Only - Opsional) */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
-                                    <Mail size={14} className="text-brand-muted" /> Alamat Email <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full ml-auto">Terkunci</span>
-                                </label>
-                                <input
-                                    type="email"
-                                    value={formData.email}
-                                    disabled
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm text-slate-500 font-medium cursor-not-allowed"
-                                />
+                            {/* Section 2: Ubah Password */}
+                            <div className="space-y-4 pt-2">
+                                <h3 className="text-xs font-black tracking-widest uppercase text-brand-primary font-jetbrains border-b border-brand-border pb-2 flex items-center justify-between">
+                                    <span>Ubah Password</span>
+                                    <span className="text-[10px] text-brand-muted font-normal lowercase">(kosongkan jika tidak ingin mengubah)</span>
+                                </h3>
+
+                                {/* Password Saat Ini */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
+                                        <Lock size={14} className="text-brand-secondary" /> Password Saat Ini
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type={showCurrentPassword ? 'text' : 'password'}
+                                            name="currentPassword"
+                                            value={formData.currentPassword}
+                                            onChange={handleChange}
+                                            className="w-full bg-brand-bg-surface border border-brand-border rounded-xl pl-4 pr-11 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                            placeholder="Masukkan password saat ini"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
+                                        >
+                                            {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Password Baru */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
+                                            Password Baru
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={showNewPassword ? 'text' : 'password'}
+                                                name="newPassword"
+                                                value={formData.newPassword}
+                                                onChange={handleChange}
+                                                className="w-full bg-brand-bg-surface border border-brand-border rounded-xl pl-4 pr-11 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                                placeholder="Min. 8 karakter"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
+                                            >
+                                                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Konfirmasi Password Baru */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
+                                            Konfirmasi Password Baru
+                                        </label>
+                                        <input
+                                            type="password"
+                                            name="confirmPassword"
+                                            value={formData.confirmPassword}
+                                            onChange={handleChange}
+                                            className="w-full bg-brand-bg-surface border border-brand-border rounded-xl px-4 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                            placeholder="Ulangi password baru"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Notifikasi Sukses/Error */}
                             {statusMsg && (
                                 <div className={`flex items-start gap-2 p-4 rounded-xl text-xs font-bold animate-in fade-in zoom-in-95 duration-200 ${statusMsg.type === 'success'
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'bg-red-50 text-red-600 border border-red-200'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-red-50 text-red-600 border border-red-200'
                                     }`}>
                                     {statusMsg.type === 'success' ? <CheckCircle2 size={16} className="shrink-0 mt-0.5" /> : <AlertCircle size={16} className="shrink-0 mt-0.5" />}
                                     <span className="leading-relaxed">{statusMsg.text}</span>
