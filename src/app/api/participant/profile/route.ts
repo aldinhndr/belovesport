@@ -5,13 +5,13 @@ import { getParticipantSession } from '@/lib/participant-auth';
 
 export async function GET() {
     try {
-        // 🛡️ 1. Cek sesi login peserta
+        // 🛡️ 1. Cek Sesi Login
         const session: any = await getParticipantSession();
         if (!session) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
         }
 
-        // Ambil ID peserta secara fleksibel (mendukung participantId, id, userId, atau sub)
+        // Ambil ID peserta secara fleksibel dari berbagai bentuk JWT Payload
         const participantId = session.participantId || session.id || session.userId || session.sub;
 
         if (!participantId) {
@@ -21,7 +21,7 @@ export async function GET() {
             );
         }
 
-        // 🛡️ 2. Tarik data dasar participant & registrasinya secara valid
+        // 🛡️ 2. Query Utama: Ambil DATA DASAR PARTICIPANT SAJA (Diisolasi agar anti-crash)
         const participant = await prisma.participant.findUnique({
             where: { id: participantId },
             select: {
@@ -32,14 +32,6 @@ export async function GET() {
                 profilePictureUrl: true,
                 createdAt: true,
                 updatedAt: true,
-                registrations: {
-                    include: {
-                        vouchers: true
-                    },
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
-                }
             }
         });
 
@@ -47,7 +39,23 @@ export async function GET() {
             return NextResponse.json({ success: false, message: 'Profil tidak ditemukan.' }, { status: 404 });
         }
 
-        // 🛡️ 3. Tarik data match dengan Try-Catch terisolasi agar tidak menggagalkan seluruh API jika belum ada match
+        // 🛡️ 3. Query Tambahan 1: Ambil Registrations (Safe Try-Catch)
+        let registrations: any[] = [];
+        try {
+            registrations = await prisma.registration.findMany({
+                where: { participantId: participantId },
+                include: {
+                    vouchers: true
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            });
+        } catch (regError) {
+            console.warn('[Profile Warning] Registrations query skipped:', regError);
+        }
+
+        // 🛡️ 4. Query Tambahan 2: Ambil Matches (Safe Try-Catch)
         let matches: any[] = [];
         try {
             matches = await prisma.match.findMany({
@@ -66,22 +74,22 @@ export async function GET() {
                 }
             });
         } catch (matchError) {
-            console.warn('[Profile Warning] Match query skipped or empty:', matchError);
-            matches = [];
+            console.warn('[Profile Warning] Match query skipped:', matchError);
         }
 
-        // 🛡️ 4. Gabungkan datanya
+        // 🛡️ 5. Gabungkan menjadi satu respons JSON utuh
         const profileData = {
             ...participant,
-            matches: matches
+            registrations,
+            matches
         };
 
         return NextResponse.json({ success: true, data: profileData }, { status: 200 });
 
     } catch (error: any) {
-        console.error('Error fetching participant profile:', error);
+        console.error('CRITICAL ERROR in GET /api/participant/profile:', error);
         return NextResponse.json(
-            { success: false, message: 'Terjadi kesalahan internal pada server database.' },
+            { success: false, message: 'Terjadi kesalahan server saat mengambil data profil.' },
             { status: 500 }
         );
     }
