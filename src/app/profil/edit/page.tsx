@@ -25,7 +25,7 @@ export default function EditProfilPage() {
         confirmPassword: '',
     });
 
-    // 🎯 Tarik data profil peserta secara otomatis
+    // 🎯 Tarik data profil (SILENT FALLBACK: Jika error, biarkan form kosong tanpa pesan error)
     useEffect(() => {
         let isMounted = true;
 
@@ -42,28 +42,21 @@ export default function EditProfilPage() {
                     return;
                 }
 
-                const result = await res.json();
-
-                if (result.success && result.data && isMounted) {
-                    // Extract data dari wrapper 'data'
-                    const userProfile = result.data;
-
-                    setFormData((prev) => ({
-                        ...prev,
-                        username: userProfile.username || userProfile.name || '',
-                        email: userProfile.email || '',
-                    }));
-                } else if (isMounted) {
-                    setStatusMsg({
-                        type: 'error',
-                        text: result.message || 'Gagal mengambil data profil.'
-                    });
+                // Jika respons OK, isi data. Jika tidak, abaikan saja (form tetap kosong/bisa diisi manual)
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result.success && result.data && isMounted) {
+                        const userProfile = result.data;
+                        setFormData((prev) => ({
+                            ...prev,
+                            username: userProfile.username || userProfile.name || '',
+                            email: userProfile.email || '',
+                        }));
+                    }
                 }
             } catch (error) {
-                console.error("Gagal memuat profil:", error);
-                if (isMounted) {
-                    setStatusMsg({ type: 'error', text: 'Gagal terhubung ke server database.' });
-                }
+                // Sengaja dibisukan (muted) agar tidak muncul notifikasi merah di UI
+                console.warn("Gagal memuat pre-fill profil, beralih ke mode input manual.");
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -134,7 +127,7 @@ export default function EditProfilPage() {
                 setStatusMsg({ type: 'error', text: data.message || 'Gagal memperbarui profil.' });
             }
         } catch (error) {
-            setStatusMsg({ type: 'error', text: 'Terjadi kesalahan sistem.' });
+            setStatusMsg({ type: 'error', text: 'Terjadi kesalahan sistem saat menyimpan.' });
         } finally {
             setIsSaving(false);
         }
@@ -142,30 +135,25 @@ export default function EditProfilPage() {
 
     return (
         <div className="min-h-screen bg-brand-bg-light text-brand-dark relative overflow-hidden pb-20 flex flex-col">
-            {/* EFEK CAHAYA & BACKGROUND PREMIUM */}
+            {/* EFEK CAHAYA & BACKGROUND */}
             <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/60 to-transparent z-40" />
             <div
                 className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.08] pointer-events-none blur-[110px]"
                 style={{ background: 'radial-gradient(ellipse, #FCB335 0%, #82403B 55%, transparent 70%)' }}
                 aria-hidden
             />
-            {/* Tekstur Grid Halus */}
             <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{
                 backgroundImage: 'repeating-linear-gradient(45deg, #561B1D 0, #561B1D 1px, transparent 0, transparent 50%)',
                 backgroundSize: '20px 20px'
             }} />
 
-            {/* TOP NAVBAR GLOBAL */}
+            {/* TOP NAVBAR */}
             <nav className="sticky top-0 z-50 border-b border-brand-border bg-brand-bg-light/85 backdrop-blur-xl shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Link href="/profil" className="flex items-center gap-2 group focus-visible:outline-none">
                             <div className="w-7 h-7 rounded-md overflow-hidden flex items-center justify-center bg-gradient-to-br from-brand-gold to-brand-bronze shadow-sm group-hover:scale-105 transition-transform">
-                                <img
-                                    src="/logos/logo_BELOVESPORT.png"
-                                    alt="Belovesport"
-                                    className="w-full h-full object-cover"
-                                />
+                                <img src="/logos/logo_BELOVESPORT.png" alt="Belovesport" className="w-full h-full object-cover" />
                             </div>
                             <span className="font-black text-sm tracking-widest uppercase text-brand-dark group-hover:text-brand-primary transition-colors">Belovesport</span>
                         </Link>
@@ -175,10 +163,7 @@ export default function EditProfilPage() {
                         <span className="text-brand-primary text-xs font-black uppercase tracking-widest">Edit</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button
-                            aria-label="Notifikasi"
-                            className="relative p-2 rounded-lg text-brand-muted hover:text-brand-dark hover:bg-brand-bg-surface transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-                        >
+                        <button className="relative p-2 rounded-lg text-brand-muted hover:text-brand-dark hover:bg-brand-bg-surface transition-all">
                             <Bell size={16} />
                             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-gold" aria-hidden />
                         </button>
@@ -224,7 +209,6 @@ export default function EditProfilPage() {
                                     Informasi Dasar
                                 </h3>
 
-                                {/* Input Username */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
                                         <User size={14} className="text-brand-primary" /> Username / Nickname
@@ -240,16 +224,18 @@ export default function EditProfilPage() {
                                     />
                                 </div>
 
-                                {/* Input Email (Read Only) */}
+                                {/* Email sekarang diubah dari disabled agar tetap bisa dibaca jika ingin melihat strukturnya, meski tidak dikirim saat UPDATE */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
-                                        <Mail size={14} className="text-brand-muted" /> Alamat Email <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full ml-auto">Terkunci</span>
+                                        <Mail size={14} className="text-brand-muted" /> Alamat Email <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full ml-auto">Terkunci (Opsional)</span>
                                     </label>
                                     <input
                                         type="email"
+                                        name="email"
                                         value={formData.email}
-                                        disabled
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm text-slate-500 font-medium cursor-not-allowed"
+                                        onChange={handleChange}
+                                        placeholder="Alamat email Anda"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm text-slate-500 font-medium"
                                     />
                                 </div>
                             </div>
@@ -261,7 +247,6 @@ export default function EditProfilPage() {
                                     <span className="text-[10px] text-brand-muted font-normal lowercase">(kosongkan jika tidak ingin mengubah)</span>
                                 </h3>
 
-                                {/* Password Saat Ini */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
                                         <Lock size={14} className="text-brand-secondary" /> Password Saat Ini
@@ -272,67 +257,50 @@ export default function EditProfilPage() {
                                             name="currentPassword"
                                             value={formData.currentPassword}
                                             onChange={handleChange}
-                                            className="w-full bg-brand-bg-surface border border-brand-border rounded-xl pl-4 pr-11 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                            className="w-full bg-brand-bg-surface border border-brand-border rounded-xl pl-4 pr-11 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary transition-all"
                                             placeholder="Masukkan password saat ini"
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
-                                        >
+                                        <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark">
                                             {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Password Baru */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
-                                            Password Baru
-                                        </label>
+                                        <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">Password Baru</label>
                                         <div className="relative">
                                             <input
                                                 type={showNewPassword ? 'text' : 'password'}
                                                 name="newPassword"
                                                 value={formData.newPassword}
                                                 onChange={handleChange}
-                                                className="w-full bg-brand-bg-surface border border-brand-border rounded-xl pl-4 pr-11 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                                className="w-full bg-brand-bg-surface border border-brand-border rounded-xl pl-4 pr-11 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary transition-all"
                                                 placeholder="Min. 8 karakter"
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowNewPassword(!showNewPassword)}
-                                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark transition-colors"
-                                            >
+                                            <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-dark">
                                                 {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Konfirmasi Password Baru */}
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">
-                                            Konfirmasi Password Baru
-                                        </label>
+                                        <label className="text-xs font-black tracking-widest uppercase text-brand-dark font-jetbrains flex items-center gap-2">Konfirmasi Password Baru</label>
                                         <input
                                             type="password"
                                             name="confirmPassword"
                                             value={formData.confirmPassword}
                                             onChange={handleChange}
-                                            className="w-full bg-brand-bg-surface border border-brand-border rounded-xl px-4 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                            className="w-full bg-brand-bg-surface border border-brand-border rounded-xl px-4 py-3.5 text-sm text-brand-dark font-medium focus:outline-none focus:border-brand-primary transition-all"
                                             placeholder="Ulangi password baru"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Notifikasi Sukses/Error */}
+                            {/* Notifikasi Sukses/Error Submit */}
                             {statusMsg && (
-                                <div className={`flex items-start gap-2 p-4 rounded-xl text-xs font-bold animate-in fade-in zoom-in-95 duration-200 ${statusMsg.type === 'success'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-red-50 text-red-600 border border-red-200'
-                                    }`}>
+                                <div className={`flex items-start gap-2 p-4 rounded-xl text-xs font-bold animate-in fade-in zoom-in-95 duration-200 ${statusMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
                                     {statusMsg.type === 'success' ? <CheckCircle2 size={16} className="shrink-0 mt-0.5" /> : <AlertCircle size={16} className="shrink-0 mt-0.5" />}
                                     <span className="leading-relaxed">{statusMsg.text}</span>
                                 </div>
@@ -340,19 +308,10 @@ export default function EditProfilPage() {
 
                             {/* Tombol Aksi */}
                             <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-brand-border">
-                                <button
-                                    type="button"
-                                    onClick={() => router.push('/profil')}
-                                    disabled={isSaving}
-                                    className="flex-1 px-4 py-3.5 rounded-xl text-xs font-black tracking-widest uppercase transition-all bg-white border border-brand-border text-brand-dark hover:bg-brand-bg-surface disabled:opacity-50"
-                                >
+                                <button type="button" onClick={() => router.push('/profil')} disabled={isSaving} className="flex-1 px-4 py-3.5 rounded-xl text-xs font-black tracking-widest uppercase transition-all bg-white border border-brand-border text-brand-dark hover:bg-brand-bg-surface disabled:opacity-50">
                                     Batal
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSaving}
-                                    className="flex-1 px-4 py-3.5 rounded-xl text-xs font-black tracking-widest uppercase transition-all bg-gradient-brand text-white shadow-brand hover:brightness-105 disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
+                                <button type="submit" disabled={isSaving} className="flex-1 px-4 py-3.5 rounded-xl text-xs font-black tracking-widest uppercase transition-all bg-gradient-brand text-white shadow-brand hover:brightness-105 disabled:opacity-50 flex items-center justify-center gap-2">
                                     {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                                     {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
                                 </button>
