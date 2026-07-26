@@ -38,28 +38,33 @@ export async function GET() {
             return NextResponse.json({ success: false, message: 'Profil tidak ditemukan.' }, { status: 404 });
         }
 
-        // 🛡️ 3. Tarik data match secara terpisah melalui query tabel Match yang valid
-        // Mencari match di mana tim home ATAU tim away memiliki participantId yang sama
-        const matches = await prisma.match.findMany({
-            where: {
-                OR: [
-                    { homeTeam: { participantId: participantId } },
-                    { awayTeam: { participantId: participantId } }
-                ]
-            },
-            include: {
-                homeTeam: true,
-                awayTeam: true
-            },
-            orderBy: {
-                scheduledTime: 'desc'
-            }
-        });
+        // 🛡️ 3. Ambil daftar ID registrasi milik peserta ini
+        const registrationIds = participant.registrations.map((reg) => reg.id);
 
-        // 🛡️ 4. Gabungkan datanya agar struktur respons tetap kompatibel dengan frontend Koko
+        // 🛡️ 4. Tarik data match berdasarkan registrationIds (homeTeamId / awayTeamId)
+        let matches: any[] = [];
+        if (registrationIds.length > 0) {
+            matches = await prisma.match.findMany({
+                where: {
+                    OR: [
+                        { homeTeamId: { in: registrationIds } },
+                        { awayTeamId: { in: registrationIds } }
+                    ]
+                },
+                include: {
+                    homeTeam: true,
+                    awayTeam: true
+                },
+                orderBy: {
+                    scheduledTime: 'desc'
+                }
+            });
+        }
+
+        // 🛡️ 5. Gabungkan datanya agar struktur respons tetap kompatibel dengan frontend Koko
         const profileData = {
             ...participant,
-            matches: matches // Menyisipkan data matches hasil query terpisah
+            matches: matches
         };
 
         return NextResponse.json({ success: true, data: profileData }, { status: 200 });
