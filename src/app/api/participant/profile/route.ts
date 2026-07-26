@@ -29,6 +29,7 @@ export async function GET() {
                 username: true,
                 email: true,
                 isVerified: true,
+                profilePictureUrl: true,
                 createdAt: true,
                 updatedAt: true,
                 registrations: {
@@ -49,7 +50,7 @@ export async function GET() {
         // 🛡️ 3. Ambil daftar ID registrasi milik peserta ini
         const registrationIds = participant.registrations?.map((reg) => reg.id) || [];
 
-        // 🛡️ 4. Tarik data match berdasarkan registrationIds
+        // 🛡️ 4. Tarik data match berdasarkan registrationIds (homeTeamId / awayTeamId)
         let matches: any[] = [];
         if (registrationIds.length > 0) {
             try {
@@ -69,12 +70,12 @@ export async function GET() {
                     }
                 });
             } catch (matchError) {
-                console.warn('[Profile Warning] Match query error:', matchError);
+                console.warn('[Profile Warning] Gagal query match:', matchError);
                 matches = [];
             }
         }
 
-        // 🛡️ 5. Gabungkan datanya
+        // 🛡️ 5. Gabungkan datanya agar struktur respons tetap sama
         const profileData = {
             ...participant,
             matches: matches
