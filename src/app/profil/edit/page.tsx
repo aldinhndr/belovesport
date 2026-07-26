@@ -25,33 +25,55 @@ export default function EditProfilPage() {
         confirmPassword: '',
     });
 
-    // Tarik data profil saat ini
+    // 🎯 Tarik data profil peserta secara otomatis
     useEffect(() => {
+        let isMounted = true;
+
         const fetchProfile = async () => {
             try {
-                const res = await fetch('/api/participant/profile', { credentials: 'include' });
+                const res = await fetch('/api/participant/profile', {
+                    method: 'GET',
+                    headers: { 'Cache-Control': 'no-cache' },
+                    credentials: 'include'
+                });
 
                 if (res.status === 401) {
                     window.location.href = '/login';
                     return;
                 }
 
-                const data = await res.json();
-                if (data.success && data.data) {
+                const result = await res.json();
+
+                if (result.success && result.data && isMounted) {
+                    // Extract data dari wrapper 'data'
+                    const userProfile = result.data;
+
                     setFormData((prev) => ({
                         ...prev,
-                        username: data.data.username || '',
-                        email: data.data.email || '',
+                        username: userProfile.username || userProfile.name || '',
+                        email: userProfile.email || '',
                     }));
+                } else if (isMounted) {
+                    setStatusMsg({
+                        type: 'error',
+                        text: result.message || 'Gagal mengambil data profil.'
+                    });
                 }
             } catch (error) {
                 console.error("Gagal memuat profil:", error);
+                if (isMounted) {
+                    setStatusMsg({ type: 'error', text: 'Gagal terhubung ke server database.' });
+                }
             } finally {
-                setIsLoading(false);
+                if (isMounted) setIsLoading(false);
             }
         };
 
         fetchProfile();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
