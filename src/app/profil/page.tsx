@@ -44,6 +44,14 @@ export default async function ProfilPage() {
     // ℹ️ Tim/slot boleh 0 — user tetap bisa lihat profilnya.
     // Ajakan untuk mendaftarkan tim ditampilkan sebagai tombol "Tambah Slot Baru" di UI, bukan paksaan redirect.
 
+    // 🛡️ Voucher.id bertipe BigInt (Prisma) — tidak bisa di-serialize saat lewat
+    // dari Server Component ke Client Component (ProfileTabsContent), jadi wajib
+    // dikonversi ke string dulu di sini agar tidak crash/layar putih.
+    const myTeamsSerialized = myTeams.map(team => ({
+        ...team,
+        vouchers: team.vouchers.map(v => ({ ...v, id: v.id.toString() })),
+    }));
+
     const teamIds = myTeams.map(t => t.id);
     let matches: any[] = [];
     let stats = { main: 0, menang: 0, seri: 0, kalah: 0, gol: 0 };
@@ -186,12 +194,12 @@ export default async function ProfilPage() {
 
                         <div className="flex gap-3 shrink-0">
                             {myTeams.length < MAX_TEAM_SLOTS && (
-                                <Link
+                                <a
                                     href="/register"
-                                    className="bg-brand-gold text-brand-bg-dark px-6 py-3 rounded-full font-bold text-sm hover:scale-105 transition-transform active:scale-95 shadow-md flex items-center gap-2"
+                                    className="bg-brand-gold text-brand-bg-dark px-6 py-3 rounded-full font-bold text-sm hover:scale-105 transition-transform active:scale-95 shadow-md flex items-center gap-2 cursor-pointer"
                                 >
                                     <PlusCircle size={14} /> Tambah Slot Baru
-                                </Link>
+                                </a>
                             )}
                             <Link
                                 href="/profil/edit"
@@ -302,7 +310,7 @@ export default async function ProfilPage() {
                     </aside>
 
                     {/* KONTEN TAB INTERAKTIF */}
-                    <ProfileTabsContent myTeams={myTeams} matches={matches} teamIds={teamIds} />
+                    <ProfileTabsContent myTeams={myTeamsSerialized} matches={matches} teamIds={teamIds} />
                 </div>
             </div>
         </div>

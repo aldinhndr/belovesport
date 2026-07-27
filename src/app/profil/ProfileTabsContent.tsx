@@ -63,12 +63,12 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                         Koko terdeteksi baru mengamankan {myTeams.length} slot. Turnamen ini mendukung hingga maksimal 2 slot tim per akun.
                                     </p>
                                 </div>
-                                <Link
+                                <a
                                     href="/register"
                                     className="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl text-xs font-black uppercase font-jetbrains tracking-widest transition-all bg-gradient-brand text-white shadow-brand hover:brightness-105 active:scale-95"
                                 >
                                     + Amankan Slot Ke-2
-                                </Link>
+                                </a>
                             </div>
                         )}
 
@@ -83,9 +83,12 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                                     <p className="text-brand-muted text-sm leading-relaxed mb-6">
                                         Anda belum mendaftarkan tim. Amankan slot tim Anda sekarang dan dapatkan e-voucher eksklusif dari Belovecorp.
                                     </p>
-                                    <Link href="/register" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-gradient-brand text-white shadow-brand">
+                                    <a
+                                        href="/register"
+                                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-gradient-brand text-white shadow-brand cursor-pointer"
+                                    >
                                         Daftar Tim Sekarang <ChevronRight size={16} />
-                                    </Link>
+                                    </a>
                                 </div>
                             </div>
                         )}
