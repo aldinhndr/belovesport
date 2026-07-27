@@ -1,20 +1,21 @@
 // Path: src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { 
+    createParticipantSessionToken, 
+    PARTICIPANT_SESSION_COOKIE, 
+    PARTICIPANT_SESSION_MAX_AGE 
+} from '@/lib/participant-auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'belovesport-secret-key-2026';
-
-// 1. Definisikan Schema Validasi Ketat dengan Zod
+// Validasi Zod untuk pembuatan akun pengguna
 const registerSchema = z.object({
   username: z.string()
     .min(3, { message: 'Username minimal harus 3 karakter.' })
     .max(20, { message: 'Username maksimal 20 karakter.' })
-    .regex(/^[a-zA-Z0-9_]+$/, { message: 'Username hanya boleh mengandung huruf, angka, dan underscore.' }),
-  email: z.string()
-    .email({ message: 'Format email tidak valid.' }),
+    .regex(/^[a-zA-Z0-9_]+$/, { message: 'Username hanya boleh huruf, angka, dan underscore.' }),
+  email: z.string().email({ message: 'Format email tidak valid.' }),
   password: z.string()
     .min(8, { message: 'Password minimal 8 karakter.' })
     .regex(/[A-Z]/, { message: 'Password wajib mengandung minimal 1 huruf besar.' })
@@ -23,86 +24,79 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-
-    // 2. Eksekusi Sensor Validasi Zod
-    const validation = registerSchema.safeParse(body);
-    
-    if (!validation.success) {
-      const firstErrorMessage = validation.error.issues[0].message;
-      return NextResponse.json({ success: false, message: firstErrorMessage }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ success: false, message: 'Payload JSON tidak valid.' }, { status: 400 });
     }
 
-    // Ekstrak data yang sudah steril dan valid
+    const validation = registerSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, message: validation.error.issues[0].message }, 
+        { status: 400 }
+      );
+    }
+
     const { username, email, password } = validation.data;
 
-    // 3. Cek spesifik duplikasi email / username
-    const existingEmail = await prisma.participant.findUnique({
-      where: { email },
-    });
-
+    // Cek duplikasi di database
+    const existingEmail = await prisma.participant.findUnique({ where: { email } });
     if (existingEmail) {
       return NextResponse.json(
-        { success: false, message: 'Email ini sudah terdaftar. Silakan langsung login.' },
+        { success: false, message: 'Email ini sudah terdaftar. Silakan langsung login.' }, 
         { status: 409 }
       );
     }
 
-    const existingUsername = await prisma.participant.findFirst({
-      where: { username },
-    });
-
+    const existingUsername = await prisma.participant.findFirst({ where: { username } });
     if (existingUsername) {
       return NextResponse.json(
-        { success: false, message: 'Username/Nickname sudah terpakai. Pilih username lain.' },
+        { success: false, message: 'Username/Nickname sudah terpakai. Pilih username lain.' }, 
         { status: 409 }
       );
     }
 
-    // 4. Hashing Password & Simpan ke Database (Directly Verified)
-    const passwordHash = await bcrypt.hash(password, 12);
+    // Hash Password & Simpan Participant Baru
+    const passwordHash = await bcrypt.hash(password, 10);
     const participant = await prisma.participant.create({
       data: {
         username,
         email,
         passwordHash,
-        isVerified: true, // Auto-verified tanpa OTP
+        isVerified: true,
       },
     });
 
-    // 5. Generate Token Cookie Session untuk Instant Auto-Login
-    const token = jwt.sign(
-      {
-        id: participant.id,
-        email: participant.email,
-        username: participant.username,
-        role: 'PARTICIPANT',
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // 🚀 Terbitkan Token Sesi Konsisten via SSOT helper
+    const token = await createParticipantSessionToken({
+      participantId: participant.id,
+      username: participant.username,
+      role: 'participant',
+    });
 
-    // 6. Respon & Set Cookie Session
     const response = NextResponse.json(
       {
         success: true,
-        message: 'Akun berhasil dibuat! Mengalihkan ke dasbor...',
+        message: 'Akun berhasil dibuat!',
         data: { participantId: participant.id, email: participant.email },
       },
       { status: 201 }
     );
 
-    response.cookies.set('participant_session', token, {
+    response.cookies.set(PARTICIPANT_SESSION_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // Valid 7 Hari
+      maxAge: PARTICIPANT_SESSION_MAX_AGE,
       path: '/',
     });
 
     return response;
   } catch (error) {
     console.error('Register Participant Error:', error);
-    return NextResponse.json({ success: false, message: 'Terjadi kesalahan server.' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: 'Terjadi kesalahan sistem internal.' }, 
+      { status: 500 }
+    );
   }
 }

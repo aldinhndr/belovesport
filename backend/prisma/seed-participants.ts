@@ -1,8 +1,7 @@
 /**
- * BELOVESPORT — Seed Participants Script
+ * BELOVESPORT — Seed Participants Script (Production Ready)
  * 
  * Path: backend/prisma/seed-participants.ts
- * Modus: Plaintext 8-Digit Password (Purwarupa Cepat)
  * Engine: Native Prisma ORM v7 Driver Adapter (@prisma/adapter-pg + pg.Pool)
  */
 
@@ -12,6 +11,7 @@ import fs from 'fs';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, RegistrationStatus } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 // 1. Pemuatan Variabel Lingkungan
 const rootEnvPath = path.resolve(__dirname, '../../.env');
@@ -35,8 +35,8 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-// Password default 8 digit (Huruf + Angka + Simbol)
-const DEFAULT_PLAIN_PASSWORD = 'Blv2026!';
+// Password default standar sistem
+const DEFAULT_PLAIN_PASSWORD = 'BeloveSport2026!';
 
 // Helper: Sanitasi input dari berkas CSV
 function clean(text: string | undefined): string {
@@ -44,11 +44,23 @@ function clean(text: string | undefined): string {
   return text.replace(/^"(.*)"$/, '$1').trim();
 }
 
-// Helper: Pembuat username otomatis
-function createUsername(name: string, email: string): string {
-  const firstName = name.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (firstName.length >= 3) return firstName;
-  return email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+// Helper: Generator Username Unik (Bebas Bentrokan/Collision)
+async function generateUniqueUsername(leaderName: string, email: string): Promise<string> {
+  let baseUsername = leaderName.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (baseUsername.length < 3) {
+    baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  let uniqueUsername = baseUsername;
+  let counter = 1;
+
+  // Cek keberadaan di DB, jika bentrok tambahkan sufiks angka (misal: rian1, rian2)
+  while (await prisma.participant.findUnique({ where: { username: uniqueUsername } })) {
+    uniqueUsername = `${baseUsername}${counter}`;
+    counter++;
+  }
+
+  return uniqueUsername;
 }
 
 async function main() {
@@ -63,6 +75,9 @@ async function main() {
   const content = fs.readFileSync(csvPath, 'utf-8');
   const rawLines = content.split(/\r?\n/);
   const dataRows = rawLines.filter((line) => line.startsWith('"2026/'));
+
+  // 🛡️ Pre-generate Bcrypt Hash sekali di awal untuk performa maksimal
+  const hashedPassword = await bcrypt.hash(DEFAULT_PLAIN_PASSWORD, 10);
 
   let createdParticipants = 0;
   let createdRegistrations = 0;
@@ -89,20 +104,21 @@ async function main() {
       continue;
     }
 
-    const username = createUsername(leaderName, email);
-
     try {
-      // A. Cari atau Buat Akun Participant (Direct 8-digit plain password)
+      // A. Cari atau Buat Akun Participant
       let participant = await prisma.participant.findUnique({
         where: { email },
       });
 
       if (!participant) {
+        // Generate username unik yang aman dari constraint violation
+        const username = await generateUniqueUsername(leaderName, email);
+
         participant = await prisma.participant.create({
           data: {
             email,
             username,
-            passwordHash: DEFAULT_PLAIN_PASSWORD, // Langsung simpan 'Blv2026!'
+            passwordHash: hashedPassword, // 🛡️ Bcrypt Hash Aman!
             isVerified: true,
           },
         });
@@ -145,7 +161,7 @@ async function main() {
         await registerTeam(team2);
       }
 
-      console.log(`✅ [BERHASIL] ${leaderName} (${email}) -> Tim: ${team1}`);
+      console.log(`✅ [BERHASIL] ${leaderName} (${email}) -> Username: @${participant.username} | Tim: ${team1}`);
     } catch (err) {
       console.error(`❌ [ERROR] Gagal memproses baris ${idx + 1} (${email}):`, err);
     }
@@ -154,7 +170,7 @@ async function main() {
   console.log(`\n🎉 [SELESAI SINKRONISASI]`);
   console.log(`   - Akun Participant Baru : ${createdParticipants}`);
   console.log(`   - Registrasi Tim Baru    : ${createdRegistrations}`);
-  console.log(`   - Password Default (8 Char) : ${DEFAULT_PLAIN_PASSWORD}`);
+  console.log(`   - Password Default      : ${DEFAULT_PLAIN_PASSWORD}`);
 }
 
 main()

@@ -1,3 +1,4 @@
+// Path: src/app/register/page.tsx
 'use client'
 
 import { useState, useRef } from 'react'
@@ -20,6 +21,35 @@ const STEPS: { id: Step; label: string }[] = [
 
 const MAX_FILE_SIZE_MB = 5
 const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+
+// 🛡️ HELPER: Kompresi Gambar Otomatis di Browser (Mencegah Payload Limit Vercel)
+const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1024; // Lebar maks 1024px
+                const scale = MAX_WIDTH / img.width;
+
+                canvas.width = scale < 1 ? MAX_WIDTH : img.width;
+                canvas.height = scale < 1 ? img.height * scale : img.height;
+
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Kompresi JPEG dengan kualitas 0.75
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+                resolve(compressedBase64);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+};
 
 function validateImageFile(file: File): string | null {
     if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -163,7 +193,7 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
     const [serverError, setServerError] = useState<string | null>(null)
 
-    // ── Data CRM & Profil eFootball ──
+    // Form inputs
     const [fullName, setFullName] = useState('')
     const [whatsappNumber, setWhatsappNumber] = useState('')
     const [teamName, setTeamName] = useState('')
@@ -172,10 +202,9 @@ export default function RegisterPage() {
     const [device, setDevice] = useState('')
     const [instagramHandle, setInstagramHandle] = useState('')
 
-    // ── Data File Upload (Bukti Transfer / Profil) ──
+    // Upload Files
     const [screenshotFile, setScreenshotFile] = useState<File | null>(null)
     const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
-    const [generatedVoucher, setGeneratedVoucher] = useState('')
 
     const handleFileChange = (file: File) => {
         setScreenshotFile(file)
@@ -191,18 +220,16 @@ export default function RegisterPage() {
         setServerError(null)
 
         if (!fullName || !whatsappNumber || !teamName || !eFootballId || !domisili || !device || !instagramHandle || !screenshotFile) {
-            setServerError('Mohon lengkapi semua data dan unggah screenshot profil eFootball Anda.')
+            setServerError('Mohon lengkapi semua data dan unggah foto profil / screenshot terlebih dahulu.')
             return
         }
 
-        setScreenshotFile(null)
-        setScreenshotPreview(null)
         setCurrentStep('PAYMENT')
     }
 
     const handleManualPaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!selectedMethod || !screenshotPreview) {
+        if (!selectedMethod || !screenshotFile) {
             setServerError('Silakan pilih metode pembayaran dan unggah bukti transfer valid Anda.')
             return
         }
@@ -211,16 +238,20 @@ export default function RegisterPage() {
         setServerError(null)
 
         try {
+            // Kompresi foto sebelum dikirim
+            const compressedProofBase64 = await compressImage(screenshotFile)
+
+            // 🎯 Payload JSON yang 100% cocok dengan nama field schema.prisma & API
             const payloadData = {
-                fullName,
+                leaderName: fullName,
                 whatsappNumber,
                 teamName,
-                eFootballId,
+                efootballId: eFootballId, // Sesuai efootballId
                 domisili,
                 device,
                 instagramHandle,
                 paymentMethod: selectedMethod,
-                screenshotBase64: screenshotPreview
+                paymentProofUrl: compressedProofBase64, // Sesuai paymentProofUrl
             }
 
             const response = await fetch('/api/register', {
@@ -230,12 +261,13 @@ export default function RegisterPage() {
             })
 
             const data = await response.json()
-            if (!response.ok) throw new Error(data.error || 'Gagal mengirim data pendaftaran manual.')
+            if (!response.ok) {
+                throw new Error(data.message || 'Gagal mengirim data pendaftaran team.')
+            }
 
-            setGeneratedVoucher(data.voucherCode)
             setCurrentStep('SUCCESS')
         } catch (err: any) {
-            setServerError(err.message ?? 'Terjadi kesalahan tak terduga. Silakan coba lagi.')
+            setServerError(err.message ?? 'Terjadi kesalahan tak terduga.')
         } finally {
             setLoading(false)
         }
@@ -243,16 +275,15 @@ export default function RegisterPage() {
 
     return (
         <main className="min-h-screen bg-brand-bg-dark flex items-center justify-center p-4 sm:p-8 relative overflow-hidden text-brand-white">
-            {/* ── Background Ambient ── */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-brand-secondary/[0.15] blur-[150px] rounded-full pointer-events-none" aria-hidden />
             <div className="absolute bottom-0 right-0 w-[600px] h-[400px] bg-brand-gold/[0.06] blur-[120px] rounded-full pointer-events-none" aria-hidden />
 
             <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 relative z-10">
 
-                {/* ── Kolom Kiri: Informasi Turnamen ── */}
+                {/* Kolom Kiri: Info Turnamen */}
                 <div className="hidden lg:flex flex-col justify-center space-y-8 pr-8">
                     <div>
-                        <Link href="/profil" className="inline-block text-2xl font-black tracking-tighter uppercase mb-8 hover:opacity-80 transition-opacity text-brand-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 rounded">
+                        <Link href="/profil" className="inline-block text-2xl font-black tracking-tighter uppercase mb-8 hover:opacity-80 transition-opacity text-brand-white">
                             BELOVE<span className="text-brand-gold">s</span>PORT
                         </Link>
                         <h1 className="text-4xl xl:text-5xl font-black uppercase tracking-tight leading-[1.1] mb-6">
@@ -260,7 +291,7 @@ export default function RegisterPage() {
                             <span className="bg-gradient-to-r from-brand-gold to-brand-bronze bg-clip-text text-transparent">Supremasi 2026</span>
                         </h1>
                         <p className="text-brand-gold-300 text-lg leading-relaxed mb-8">
-                            Pendaftaran turnamen eFootball Mobile Nasional resmi dibuka. Amankan bracket Anda dan klaim voucher eksklusif Belovecorp sekarang.
+                            Pendaftaran turnamen eFootball Mobile Nasional resmi dibuka. Amankan slot tim Anda sekarang.
                         </p>
                     </div>
 
@@ -269,24 +300,23 @@ export default function RegisterPage() {
                             <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0 mt-1" />
                             <div>
                                 <h4 className="font-bold text-brand-white uppercase text-sm tracking-wide">Validasi Manual Aman</h4>
-                                <p className="text-xs text-brand-gold-300 mt-1">Tim admin melakukan pengecekan real-time 1x24 jam untuk menjamin keaslian slot pendaftar.</p>
+                                <p className="text-xs text-brand-gold-300 mt-1">Tim admin melakukan pengecekan real-time untuk menjamin keaslian slot pendaftar.</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-4 p-4 rounded-2xl bg-brand-bg-surface border border-brand-secondary/40 shadow-lg">
                             <Ticket className="w-6 h-6 text-brand-gold shrink-0 mt-1" />
                             <div>
                                 <h4 className="font-bold text-brand-white uppercase text-sm tracking-wide">Voucher Otomatis</h4>
-                                <p className="text-xs text-brand-gold-300 mt-1">Sistem menerbitkan voucher senilai Rp 50.000 pasca verifikasi pembayaran.</p>
+                                <p className="text-xs text-brand-gold-300 mt-1">Sistem menerbitkan voucher setelah pendaftaran disetujui admin.</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* ── Kolom Kanan: Form Multi-Step ── */}
+                {/* Kolom Kanan: Form Multi-Step */}
                 <div className="bg-brand-bg-surface border border-brand-secondary/50 rounded-3xl p-6 sm:p-10 shadow-2xl shadow-black/50 relative overflow-hidden w-full max-w-md mx-auto lg:mx-0">
                     <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-secondary via-brand-gold to-brand-bronze" />
 
-                    {/* Mobile-only brand mark, since the left column is hidden below lg */}
                     <Link href="/profil" className="lg:hidden inline-block text-lg font-black tracking-tighter uppercase mb-6 hover:opacity-80 transition-opacity text-brand-white">
                         BELOVE<span className="text-brand-gold">s</span>PORT
                     </Link>
@@ -294,9 +324,9 @@ export default function RegisterPage() {
                     <StepIndicator currentStep={currentStep} />
 
                     <AnimatePresence mode="wait">
-                        {/* ── STEP 1: DETAILS ── */}
+                        {/* STEP 1: DETAILS */}
                         {currentStep === 'DETAILS' && (
-                            <motion.div key="step-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                            <motion.div key="step-1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <div>
                                     <h3 className="text-2xl font-black text-brand-white uppercase tracking-tight">Profil eFootball</h3>
                                     <p className="text-sm text-brand-gold-300 mt-1">Lengkapi data tim dan identitas Anda secara valid.</p>
@@ -305,9 +335,9 @@ export default function RegisterPage() {
 
                                     <div className="space-y-1.5">
                                         <label htmlFor="fullName" className="text-xs font-bold tracking-wider uppercase text-brand-gold-300 font-jetbrains flex items-center gap-2">
-                                            <User size={12} className="text-brand-gold" /> Nama Lengkap
+                                            <User size={12} className="text-brand-gold" /> Nama Lengkap / Kapten
                                         </label>
-                                        <input id="fullName" required type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Sesuai Identitas Asli" className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-lg px-4 py-3 text-sm text-brand-white placeholder:text-brand-gold-500 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold transition" />
+                                        <input id="fullName" required type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Sesuai Identitas Asli" className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-lg px-4 py-3 text-sm text-brand-white placeholder:text-brand-gold-500 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold transition" />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
@@ -336,7 +366,7 @@ export default function RegisterPage() {
                                             <label htmlFor="whatsapp" className="text-xs font-bold tracking-wider uppercase text-brand-gold-300 font-jetbrains flex items-center gap-2">
                                                 <Smartphone size={12} className="text-brand-gold" /> Nomor WA Aktif
                                             </label>
-                                            <input id="whatsapp" required type="tel" inputMode="numeric" autoComplete="tel" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="08XXXXXXXXX" className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-lg px-4 py-3 text-sm text-brand-white placeholder:text-brand-gold-500 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold transition" />
+                                            <input id="whatsapp" required type="tel" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="08XXXXXXXXX" className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-lg px-4 py-3 text-sm text-brand-white placeholder:text-brand-gold-500 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold transition" />
                                         </div>
                                     </div>
 
@@ -356,7 +386,7 @@ export default function RegisterPage() {
                                     </div>
 
                                     <FileUploadField
-                                        label="Upload Screenshot Profil"
+                                        label="Upload Screenshot Profil / Logo"
                                         icon={ImageIcon}
                                         preview={screenshotPreview}
                                         fileName={screenshotFile?.name}
@@ -365,16 +395,16 @@ export default function RegisterPage() {
 
                                     {serverError && <ErrorAlert message={serverError} />}
 
-                                    <button type="submit" className="w-full bg-brand-gold text-brand-bg-dark font-bold text-sm py-3.5 rounded-lg hover:brightness-105 active:brightness-95 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 shadow-lg shadow-brand-gold/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg-surface">
+                                    <button type="submit" className="w-full bg-brand-gold text-brand-bg-dark font-bold text-sm py-3.5 rounded-lg hover:brightness-105 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 shadow-lg">
                                         <span>Lanjut ke Pembayaran</span><ArrowRight size={16} />
                                     </button>
                                 </form>
                             </motion.div>
                         )}
 
-                        {/* ── STEP 2: PAYMENT ── */}
+                        {/* STEP 2: PAYMENT */}
                         {currentStep === 'PAYMENT' && (
-                            <motion.div key="step-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                            <motion.div key="step-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <div className="text-center">
                                     <span className="text-[10px] font-bold font-jetbrains tracking-widest bg-brand-gold/10 border border-brand-gold/20 text-brand-gold px-3 py-1 rounded-full uppercase mb-2 inline-block">Metode Pembayaran</span>
                                     <h3 className="text-2xl font-black text-brand-white uppercase tracking-tight">Pilih Jalur Bayar</h3>
@@ -392,132 +422,67 @@ export default function RegisterPage() {
                                                     setSelectedMethod('QRIS')
                                                     setServerError(null)
                                                 }}
-                                                aria-pressed={selectedMethod === 'QRIS'}
-                                                className={`p-3.5 rounded-xl border text-center font-jetbrains transition-all flex flex-col items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${selectedMethod === 'QRIS'
-                                                    ? 'border-brand-gold bg-brand-gold/10 text-brand-gold shadow-md shadow-brand-gold/10'
-                                                    : 'border-brand-secondary/50 bg-brand-bg-dark hover:border-brand-secondary text-brand-gold-300'
+                                                className={`p-3.5 rounded-xl border text-center font-jetbrains transition-all flex flex-col items-center justify-center gap-1.5 ${selectedMethod === 'QRIS'
+                                                    ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
+                                                    : 'border-brand-secondary/50 bg-brand-bg-dark text-brand-gold-300'
                                                     }`}
                                             >
-                                                <QrCode size={20} className={selectedMethod === 'QRIS' ? 'text-brand-gold' : 'text-brand-gold-300'} />
+                                                <QrCode size={20} />
                                                 <span className="text-xs font-black">Scan QRIS</span>
                                             </button>
 
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    setSelectedMethod('TRANSFER_DIRECT')
-                                                    setScreenshotFile(null)
-                                                    setScreenshotPreview(null)
+                                                    setSelectedMethod('BRI')
                                                     setServerError(null)
                                                 }}
-                                                aria-pressed={!!selectedMethod && selectedMethod !== 'QRIS'}
-                                                className={`p-3.5 rounded-xl border text-center font-jetbrains transition-all flex flex-col items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${selectedMethod && selectedMethod !== 'QRIS'
-                                                    ? 'border-brand-gold bg-brand-gold/10 text-brand-gold shadow-md shadow-brand-gold/10'
-                                                    : 'border-brand-secondary/50 bg-brand-bg-dark hover:border-brand-secondary text-brand-gold-300'
+                                                className={`p-3.5 rounded-xl border text-center font-jetbrains transition-all flex flex-col items-center justify-center gap-1.5 ${selectedMethod && selectedMethod !== 'QRIS'
+                                                    ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
+                                                    : 'border-brand-secondary/50 bg-brand-bg-dark text-brand-gold-300'
                                                     }`}
                                             >
-                                                <Building size={20} className={selectedMethod && selectedMethod !== 'QRIS' ? 'text-brand-gold' : 'text-brand-gold-300'} />
-                                                <span className="text-xs font-black">Transfer Manual</span>
+                                                <Building size={20} />
+                                                <span className="text-xs font-black">Transfer Bank</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* ── SUB-STEP 2: AKSI BAYAR DINAMIS (PINDAI QRIS) ── */}
+                                    {/* QRIS / Transfer Box */}
                                     {selectedMethod === 'QRIS' && (
-                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                            <label className="text-[10px] font-black tracking-wider uppercase text-brand-gold-300 font-jetbrains block">Langkah 2: Pindai Barcode QRIS</label>
-                                            <div className="p-4 rounded-2xl bg-white text-black text-center space-y-3 relative overflow-hidden shadow-xl max-w-[240px] mx-auto border-4 border-brand-primary">
-                                                <div className="flex justify-center pt-1">
-                                                    <img src="/img/QRIS_Logo.svg" alt="Logo QRIS Resmi" className="h-5 w-auto object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none' }} />
-                                                </div>
-                                                <div className="w-full aspect-square bg-slate-100 rounded-xl flex items-center justify-center p-2 border border-gray-200">
-                                                    <img src="/img/QRIS.jpg" alt="QRIS Pendaftaran" className="w-full h-full object-contain" onError={(e) => {
-                                                        (e.target as HTMLElement).style.display = 'none'
-                                                    }} />
-                                                </div>
-                                                <p className="text-[9px] text-brand-gold-300 font-medium leading-tight">Pindai kode QR di atas via aplikasi pembayaran apa saja.</p>
+                                        <div className="p-4 rounded-2xl bg-white text-black text-center space-y-3 shadow-xl max-w-[240px] mx-auto border-4 border-brand-primary">
+                                            <div className="w-full aspect-square bg-slate-100 rounded-xl flex items-center justify-center p-2">
+                                                <img src="/img/QRIS.jpg" alt="QRIS Pendaftaran" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none' }} />
                                             </div>
-                                        </motion.div>
+                                            <p className="text-[9px] text-gray-600 font-medium">Pindai QR via GoPay, OVO, DANA, BCA, BRI, dll.</p>
+                                        </div>
                                     )}
 
-                                    {/* ── SUB-STEP 2: PILIH BRAND BANK ── */}
                                     {selectedMethod && selectedMethod !== 'QRIS' && (
-                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                                            <label className="text-[10px] font-black tracking-wider uppercase text-brand-gold-400 font-jetbrains block">Langkah 2: Pilih Brand Bank / E-Wallet</label>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-brand-bg-dark border border-brand-secondary/40 p-3 rounded-2xl">
-                                                {[
-                                                    { id: 'BRI', name: 'BANK BRI', activeClass: 'border-[#00529C] bg-[#00529C]/10 text-[#00529C]' },
-                                                    { id: 'SEABANK', name: 'SEABANK', activeClass: 'border-[#FF5722] bg-[#FF5722]/10 text-[#FF5722]' },
-                                                    { id: 'DANA', name: 'DANA', activeClass: 'border-[#118EEA] bg-[#118EEA]/10 text-[#118EEA]' },
-                                                    { id: 'GOPAY', name: 'GOPAY', activeClass: 'border-[#00AED6] bg-[#00AED6]/10 text-[#00AED6]' },
-                                                    { id: 'OVO', name: 'OVO', activeClass: 'border-[#4C2A86] bg-[#4C2A86]/10 text-[#4C2A86]' },
-                                                    { id: 'SPAY', name: 'SHOPEEPAY', activeClass: 'border-[#EE4D2D] bg-[#EE4D2D]/10 text-[#EE4D2D]' }
-                                                ].map((subMethod) => {
-                                                    const isCurrent = selectedMethod === subMethod.id
-                                                    return (
-                                                        <button
-                                                            key={subMethod.id}
-                                                            type="button"
-                                                            onClick={() => setSelectedMethod(subMethod.id)}
-                                                            aria-pressed={isCurrent}
-                                                            className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-2 min-h-[82px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${isCurrent
-                                                                ? subMethod.activeClass + ' shadow-lg scale-[1.02]'
-                                                                : 'border-brand-secondary/30 bg-brand-bg-surface hover:border-brand-secondary text-brand-gold-500'
-                                                                }`}
-                                                        >
-                                                            <img
-                                                                src={`/logos/${subMethod.id.toLowerCase()}.png`}
-                                                                alt={subMethod.name}
-                                                                className={`h-6 w-auto object-contain max-w-[70px] transition-all duration-200 ${isCurrent ? 'brightness-110' : 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100'
-                                                                    }`}
-                                                                onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
-                                                            />
-                                                            <span className={`text-[9px] font-black font-jetbrains tracking-tight uppercase ${isCurrent ? 'text-brand-white' : 'text-brand-gold-300'
-                                                                }`}>
-                                                                {subMethod.name}
-                                                            </span>
-                                                        </button>
-                                                    )
-                                                })}
-                                            </div>
-                                        </motion.div>
-                                    )}
-
-                                    {/* Tampilan Output Detail Rekening */}
-                                    {selectedMethod && !['QRIS', 'TRANSFER_DIRECT'].includes(selectedMethod) && (
-                                        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-4 rounded-xl bg-brand-bg-dark border border-brand-secondary/50 space-y-1 font-jetbrains relative overflow-hidden shadow-inner">
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-[0.03] font-black text-4xl select-none tracking-tighter text-brand-white">
-                                                {selectedMethod}
-                                            </div>
-                                            <p className="text-[9px] text-brand-gold-300 uppercase tracking-wider">Salin Nomor Rekening Tujuan</p>
-                                            <p className="text-lg font-bold text-brand-gold tracking-wider select-all">
-                                                {selectedMethod === 'BRI' && '0176-0103-7457-536'}
-                                                {selectedMethod === 'SEABANK' && 'Segera Tersedia:)'}
-                                                {['DANA', 'GOPAY', 'OVO', 'SPAY'].includes(selectedMethod) && '082225700427'}
-                                            </p>
+                                        <div className="p-4 rounded-xl bg-brand-bg-dark border border-brand-secondary/50 space-y-1 font-jetbrains">
+                                            <p className="text-[9px] text-brand-gold-300 uppercase">Rekening Tujuan (BANK BRI)</p>
+                                            <p className="text-lg font-bold text-brand-gold tracking-wider select-all">0176-0103-7457-536</p>
                                             <p className="text-[11px] text-brand-gold-300 font-medium">a.n. Aldin Handrian Halawa</p>
-                                        </motion.div>
+                                        </div>
                                     )}
 
-                                    {/* ── SUB-STEP 3: UPLOAD BUKTI TRANSFER ── */}
-                                    {selectedMethod && selectedMethod !== 'TRANSFER_DIRECT' && (
+                                    {selectedMethod && (
                                         <FileUploadField
-                                            label="Unggah Bukti Resi Sukses"
+                                            label="Unggah Bukti Transfer Resi Sukses"
                                             icon={ImageIcon}
                                             preview={screenshotPreview}
                                             fileName={screenshotFile?.name}
                                             onFileSelected={handleFileChange}
-                                            stepLabel="Langkah 3"
+                                            stepLabel="Langkah 2"
                                         />
                                     )}
 
                                     {serverError && <ErrorAlert message={serverError} />}
 
-                                    {/* Tombol Kirim Form */}
                                     <button
                                         type="submit"
-                                        disabled={loading || !selectedMethod || selectedMethod === 'TRANSFER_DIRECT' || !screenshotPreview}
-                                        className="w-full bg-brand-gold text-brand-bg-dark font-bold text-sm py-3.5 rounded-lg hover:brightness-105 active:brightness-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-brand-gold/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg-surface"
+                                        disabled={loading || !selectedMethod || !screenshotPreview}
+                                        className="w-full bg-brand-gold text-brand-bg-dark font-bold text-sm py-3.5 rounded-lg hover:brightness-105 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
                                     >
                                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Kirim Data Registrasi</span>}
                                     </button>
@@ -525,36 +490,24 @@ export default function RegisterPage() {
                             </motion.div>
                         )}
 
-                        {/* ── STEP 3: SUCCESS ── */}
+                        {/* STEP 3: SUCCESS */}
                         {currentStep === 'SUCCESS' && (
-                            <motion.div
-                                key="step-5"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="text-center space-y-6 py-2"
-                            >
-                                {/* Ikon Sukses */}
+                            <motion.div key="step-3" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-6 py-2">
                                 <div className="mx-auto w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mb-2">
                                     <CheckCircle2 size={24} className="text-emerald-400" />
                                 </div>
-
-                                {/* Judul & Deskripsi */}
                                 <div className="space-y-1">
                                     <h3 className="text-2xl font-black text-brand-white uppercase tracking-tight">Pendaftaran Dikirim!</h3>
                                     <p className="text-xs text-brand-gold-300">
-                                        Admin akan memvalidasi pendaftaran Anda dalam 1x24 jam. Pastikan Nomor WA yang anda input Aktif.
+                                        Admin akan memvalidasi pendaftaran Anda. Cek status tim Anda di halaman Profil.
                                     </p>
                                 </div>
-
-                                {/* Navigasi Kembali ke Profil */}
-                                <div className="w-full max-w-xl mx-auto mt-2 space-y-4">
-                                    <Link
-                                        href="/profil"
-                                        className="block w-full px-8 py-3.5 bg-brand-gold text-brand-bg-dark text-xs font-bold rounded-lg hover:brightness-105 transition-all cursor-pointer font-mono text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
-                                    >
-                                        Lihat Profil Anda
-                                    </Link>
-                                </div>
+                                <Link
+                                    href="/profil"
+                                    className="block w-full px-8 py-3.5 bg-brand-gold text-brand-bg-dark text-xs font-bold rounded-lg hover:brightness-105 transition-all text-center font-mono"
+                                >
+                                    Lihat Profil Anda
+                                </Link>
                             </motion.div>
                         )}
                     </AnimatePresence>
