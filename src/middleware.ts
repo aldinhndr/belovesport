@@ -26,14 +26,16 @@ export function middleware(request: NextRequest) {
         }
     }
 
-    // 🔑 BARIKADE 2: Route Guard /admin & /dashboard /profil
+    // 🔑 BARIKADE 2: Route Guard /admin, /dashboard, & /profil (Wajib Login)
     if (!isAuthenticated && (pathname.startsWith('/dashboard') || pathname.startsWith('/profil') || pathname.startsWith('/admin'))) {
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
 
-    // Redirect jika user sudah login tetapi mencoba membuka halaman /login /register /signup
-    if (isAuthenticated && (pathname === '/login' || pathname === '/register' || pathname === '/signup')) {
+    // 🔑 BARIKADE 3: Guest-Only Routes (/login & /signup saja)
+    // 🛡️ REFACTOR: Hapus '/register' dari sini agar user yang sudah login
+    // tetap bisa membuka formulir /register untuk menambah slot tim ke-2, ke-3, dst.
+    if (isAuthenticated && (pathname === '/login' || pathname === '/signup')) {
         url.pathname = '/profil';
         return NextResponse.redirect(url);
     }
