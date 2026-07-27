@@ -10,7 +10,7 @@ import { calculateMatchResult } from '@/lib/tournament';
 import {
     CheckCircle2, Edit, Trophy, Mail, ShieldCheck, Bell,
     Calendar, Swords, BookOpen, MessageCircle, Share2,
-    BadgeCheck, Hash
+    BadgeCheck, Hash, PlusCircle
 } from 'lucide-react';
 
 const MAX_TEAM_SLOTS = 5;
@@ -41,10 +41,8 @@ export default async function ProfilPage() {
         orderBy: { id: 'desc' }
     });
 
-    // 🚀 RULES ENFORCEMENT: Jika user tidak memiliki tim terdaftar, paksa ke /register
-    if (myTeams.length === 0) {
-        redirect('/register');
-    }
+    // ℹ️ Tim/slot boleh 0 — user tetap bisa lihat profilnya.
+    // Ajakan untuk mendaftarkan tim ditampilkan sebagai tombol "Tambah Slot Baru" di UI, bukan paksaan redirect.
 
     const teamIds = myTeams.map(t => t.id);
     let matches: any[] = [];
@@ -187,6 +185,14 @@ export default async function ProfilPage() {
                         </div>
 
                         <div className="flex gap-3 shrink-0">
+                            {myTeams.length < MAX_TEAM_SLOTS && (
+                                <Link
+                                    href="/register"
+                                    className="bg-brand-gold text-brand-bg-dark px-6 py-3 rounded-full font-bold text-sm hover:scale-105 transition-transform active:scale-95 shadow-md flex items-center gap-2"
+                                >
+                                    <PlusCircle size={14} /> Tambah Slot Baru
+                                </Link>
+                            )}
                             <Link
                                 href="/profil/edit"
                                 className="bg-brand-primary text-white px-6 py-3 rounded-full font-bold text-sm hover:scale-105 transition-transform active:scale-95 shadow-md flex items-center gap-2"

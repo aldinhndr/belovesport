@@ -71,10 +71,11 @@ function RegisterContent() {
                 return;
             }
 
-            // 🚀 RULES ENFORCEMENT: Akun baru wajib diarahkan ke /register untuk mendaftarkan Tim
-            setSuccessMsg('Akun berhasil dibuat! Mengalihkan ke formulir pendaftaran tim...');
+            // 🚀 RULES ENFORCEMENT: Akun baru langsung diarahkan ke /profil.
+            // Penambahan tim/slot dilakukan lewat tombol "Tambah Slot Baru" di halaman profil.
+            setSuccessMsg('Akun berhasil dibuat! Mengalihkan ke profil Anda...');
             setTimeout(() => {
-                router.push('/register');
+                router.push('/profil');
                 router.refresh();
             }, 1000);
         } catch {
@@ -90,7 +91,7 @@ function RegisterContent() {
             const { error: oauthError } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    redirectTo: `${window.location.origin}/api/auth/callback`,
                 },
             });
             if (oauthError) {

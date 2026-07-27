@@ -208,6 +208,45 @@ export default function ProfileTabsContent({ myTeams, matches, teamIds }: { myTe
                     </div>
                 )}
 
+                {/* ── TAB 2: VOUCHER SAYA ── */}
+                {activeTab === 'VOUCHERS' && (
+                    <div className="space-y-4">
+                        <SectionHeader icon={<Ticket size={14} />} title="Voucher Saya" />
+                        {myTeams.filter(t => t.status === 'APPROVED').length === 0 ? (
+                            <div className="text-center py-16 border border-dashed border-brand-border rounded-2xl bg-white shadow-sm">
+                                <Ticket className="mx-auto text-brand-muted/60 mb-3" size={32} />
+                                <p className="text-sm font-bold text-brand-muted">Belum ada voucher.</p>
+                                <p className="text-xs text-brand-muted/70 mt-1">Voucher muncul otomatis setelah tim Anda disetujui admin.</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {myTeams.filter(t => t.status === 'APPROVED').map((team: any) => {
+                                    const voucher = team.vouchers?.[0];
+                                    return (
+                                        <div key={team.id} className="rounded-2xl p-5 bg-white border border-brand-gold/30 shadow-sm space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-black text-sm text-brand-dark uppercase truncate">{team.teamName}</h4>
+                                                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                            </div>
+                                            {voucher ? (
+                                                <>
+                                                    <div className="flex items-center justify-between p-3 rounded-xl bg-brand-bg-surface border border-brand-border gap-2">
+                                                        <span className="font-mono text-sm font-bold tracking-widest text-brand-primary truncate">{voucher.voucherCode}</span>
+                                                        <CopyVoucherButton voucherCode={voucher.voucherCode} />
+                                                    </div>
+                                                    <p className="text-[11px] text-brand-muted">Tunjukkan kode ini saat verifikasi di lokasi turnamen.</p>
+                                                </>
+                                            ) : (
+                                                <p className="text-xs text-brand-muted italic">Voucher sedang diproses.</p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* ── TAB 3: JADWAL & LIVE MATCH CENTER KOKO ── */}
                 {activeTab === 'MATCHES' && (
                     <div className="space-y-4">

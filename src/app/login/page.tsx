@@ -50,8 +50,10 @@ function LoginContent() {
                 setError(errorMsg);
                 return;
             }
-            // 🚀 RULES ENFORCEMENT: Arahkan ke /profil jika punya tim, atau ke /register jika belum punya tim
-            router.push(data.hasTeam ? '/profil' : '/register');
+            // 🚀 RULES ENFORCEMENT: Login selalu ke /profil.
+            // Kalau user belum punya tim, halaman profil sendiri yang menampilkan
+            // state kosong + tombol "Tambah Slot Baru" ke /register.
+            router.push('/profil');
             router.refresh();
         } catch {
             setError('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
