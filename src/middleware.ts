@@ -6,35 +6,21 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     const pathname = url.pathname;
 
-    // 1. Ambil Session Cookie (Prisma Participant JWT & Supabase Auth Cookie)
     const participantToken = request.cookies.get('participant_session')?.value;
-    
-    // Cek keberadaan cookie Supabase tanpa memanggil SDK heavy-fetch
     const hasSupabaseSession = request.cookies.getAll().some(
         (c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token')
     );
 
     const isAuthenticated = Boolean(participantToken || hasSupabaseSession);
 
-    // 🔑 BARIKADE 1: Gembok Pra-Peluncuran (Ubah ke false jika aplikasi sudah rilis)
-    const isLockedBeforeLaunch = false; 
-
-    if (isLockedBeforeLaunch) {
-        if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
-            url.pathname = '/login';
-            return NextResponse.redirect(url);
-        }
-    }
-
-    // 🔑 BARIKADE 2: Route Guard /admin, /dashboard, & /profil (Wajib Login)
+    // 🔑 BARIKADE 1: Protected Routes (/dashboard, /profil, /admin)
     if (!isAuthenticated && (pathname.startsWith('/dashboard') || pathname.startsWith('/profil') || pathname.startsWith('/admin'))) {
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
 
-    // 🔑 BARIKADE 3: Guest-Only Routes (/login & /signup saja)
-    // 🛡️ REFACTOR: Hapus '/register' dari sini agar user yang sudah login
-    // tetap bisa membuka formulir /register untuk menambah slot tim ke-2, ke-3, dst.
+    // 🔑 BARIKADE 2: Guest-Only Routes (/login & /signup saja)
+    // Catatan: /register sengaja dibebaskan agar pengguna terautentikasi tetap bisa daftar tim
     if (isAuthenticated && (pathname === '/login' || pathname === '/signup')) {
         url.pathname = '/profil';
         return NextResponse.redirect(url);
@@ -43,7 +29,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
 }
 
-// ⚙️ MATCHER: Tentukan halaman mana saja yang melewati guard ini
 export const config = {
     matcher: [
         '/dashboard/:path*', 
