@@ -29,7 +29,6 @@ export async function sendWaNotification(
     `🌐 *LINK AKSES UTAMA:* \n` +
     `Silakan masuk ke dasbor profil Anda melalui tautan resmi berikut:\n` +
     `https://belovesport.com/login\n\n` +
-    `Silakan salin voucher Anda di dalam dasbor untuk melihat detail pembagian grup serta jadwal pertandingan.\n\n` +
     `_Pesan ini dikirim otomatis oleh sistem keamanan BELOVESPORT._`;
 
   try {
