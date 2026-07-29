@@ -2,9 +2,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { MatchStatus, MatchStage } from '@prisma/client';
+import { getAdminSession } from '@/lib/auth';
+import { createMatchAuditLog } from '@/lib/match-audit';
 
 export async function GET() {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
     const pendingMatches = await prisma.match.findMany({
       where: { matchStatus: MatchStatus.WAITING_VERIFICATION },
       include: {
@@ -23,6 +29,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
     const body = await request.json();
     const { matchId, action } = body;
 
@@ -51,6 +61,13 @@ export async function POST(request: NextRequest) {
           screenshotResultUrl: null,
           reportedById: null
         },
+      });
+      await createMatchAuditLog({
+        matchId,
+        action: 'SCORE_REJECTED',
+        actorId: adminSession.username,
+        actorRole: 'admin',
+        details: 'Admin menolak laporan skor dan mengembalikan match ke status SCHEDULED'
       });
       return NextResponse.json({ success: true, message: 'Laporan skor ditolak. Status dikembalikan ke SCHEDULED.' });
     }
@@ -184,6 +201,14 @@ export async function POST(request: NextRequest) {
 
     }, {
       timeout: 15000 // Jatah waktu 15 detik eksekusi agar terhindar dari kendala kedaluwarsa koneksi
+    });
+
+    await createMatchAuditLog({
+      matchId,
+      action: 'SCORE_APPROVED',
+      actorId: adminSession.username,
+      actorRole: 'admin',
+      details: 'Admin mengonfirmasi hasil skor dan menutup pertandingan'
     });
 
     return NextResponse.json({

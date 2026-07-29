@@ -1,7 +1,8 @@
 // Path: src/app/api/tournament/chat/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getParticipantSession } from '@/lib/participant-auth'; // Menggunakan Auth Lokal Koko
+import { getParticipantSession } from '@/lib/participant-auth';
+import { createMatchAuditLog } from '@/lib/match-audit';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -12,9 +13,42 @@ export async function GET(request: Request) {
     }
 
     try {
+        const session = await getParticipantSession();
+        if (!session) {
+            return NextResponse.json(
+                { success: false, message: 'AKSES DITOLAK: Sesi tidak valid atau telah berakhir.' },
+                { status: 401 }
+            );
+        }
+
+        const match = await prisma.match.findUnique({
+            where: { id: matchId },
+            select: { id: true, homeTeamId: true, awayTeamId: true }
+        });
+
+        if (!match) {
+            return NextResponse.json({ success: false, message: 'Pertandingan tidak ditemukan.' }, { status: 404 });
+        }
+
+        const isParticipantInMatch = await prisma.registration.findFirst({
+            where: {
+                participantId: session.participantId,
+                status: 'APPROVED',
+                OR: [
+                    { id: match.homeTeamId ?? '' },
+                    { id: match.awayTeamId ?? '' }
+                ]
+            },
+            select: { id: true }
+        });
+
+        if (!isParticipantInMatch) {
+            return NextResponse.json({ success: false, message: 'Anda tidak terdaftar dalam pertandingan ini.' }, { status: 403 });
+        }
+
         const chats = await prisma.matchChat.findMany({
             where: { matchId },
-            orderBy: { createdAt: 'asc' } // Urutkan dari yang terlama ke terbaru
+            orderBy: { createdAt: 'asc' }
         });
         return NextResponse.json({ success: true, data: chats }, { status: 200 });
     } catch (error) {
@@ -52,6 +86,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'User tidak ditemukan.' }, { status: 404 });
         }
 
+        const match = await prisma.match.findUnique({
+            where: { id: matchId },
+            select: { id: true, homeTeamId: true, awayTeamId: true }
+        });
+
+        if (!match) {
+            return NextResponse.json({ success: false, message: 'Pertandingan tidak ditemukan.' }, { status: 404 });
+        }
+
+        const isParticipantInMatch = await prisma.registration.findFirst({
+            where: {
+                participantId: session.participantId,
+                status: 'APPROVED',
+                OR: [
+                    { id: match.homeTeamId ?? '' },
+                    { id: match.awayTeamId ?? '' }
+                ]
+            },
+            select: { id: true }
+        });
+
+        if (!isParticipantInMatch) {
+            return NextResponse.json({ success: false, message: 'Anda tidak memiliki akses untuk chat pertandingan ini.' }, { status: 403 });
+        }
+
         // 3. Simpan pesan ke database dengan ID dan Nama Pengirim yang sah
         const newChat = await prisma.matchChat.create({
             data: {
@@ -60,6 +119,14 @@ export async function POST(request: Request) {
                 senderName: participant.username,
                 message: message
             }
+        });
+
+        await createMatchAuditLog({
+            matchId,
+            action: 'CHAT_MESSAGE_SENT',
+            actorId: session.participantId,
+            actorRole: 'participant',
+            details: `Pesan chat dikirim oleh ${participant.username}`
         });
 
         return NextResponse.json({ success: true, data: newChat }, { status: 200 });

@@ -2,10 +2,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { MatchStage } from '@prisma/client';
+import { getAdminSession } from '@/lib/auth';
+import { createMatchAuditLog } from '@/lib/match-audit';
 
 // 1. GET: Ambil daftar semua match untuk dijadwalkan (Bisa difilter per Grup)
 export async function GET(request: NextRequest) {
     try {
+        const adminSession = await getAdminSession();
+        if (!adminSession) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
         const { searchParams } = new URL(request.url);
         const groupFilter = searchParams.get('groupName'); // Misal: A, B, C...
 
@@ -40,6 +46,10 @@ export async function GET(request: NextRequest) {
 // 2. PUT: Update Waktu Pertandingan & Geser Status jika diperlukan
 export async function PUT(request: NextRequest) {
     try {
+        const adminSession = await getAdminSession();
+        if (!adminSession) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
         const body = await request.json();
         const { matchId, scheduledTime, startNow } = body;
 
@@ -62,6 +72,14 @@ export async function PUT(request: NextRequest) {
         const updatedMatch = await prisma.match.update({
             where: { id: matchId },
             data: updateData
+        });
+
+        await createMatchAuditLog({
+            matchId,
+            action: startNow ? 'MATCH_STARTED' : 'SCHEDULE_UPDATED',
+            actorId: adminSession.username,
+            actorRole: 'admin',
+            details: startNow ? 'Admin memulai pertandingan secara manual' : 'Admin memperbarui jadwal pertandingan'
         });
 
         return NextResponse.json({ 

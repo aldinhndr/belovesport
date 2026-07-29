@@ -18,7 +18,6 @@ export async function sendWaNotification(
   const message = `*TOURNAMENT BELOVESPORT 2026 — S1*\n\n` +
     `Halo *${leaderName}*,\n` +
     `Selamat! Pendaftaran Tim *${teamName}* telah resmi *TERVERIFIKASI* oleh Admin.\n\n` +
-    `Slot turnamen nasional Anda telah aman. Saat ini akun Command Center Anda telah aktif sepenuhnya.\n\n` +
     `🔑 *KREDENSIAL AKSES LOGIN:* \n` +
     `• Username: \`@${username.replace('@', '')}\`\n` +
     `• Email: \`${participantEmail}\`\n` +
@@ -29,6 +28,7 @@ export async function sendWaNotification(
     `🌐 *LINK AKSES UTAMA:* \n` +
     `Silakan masuk ke dasbor profil Anda melalui tautan resmi berikut:\n` +
     `https://belovesport.com/login\n\n` +
+    `Gabung ke Saluran Kita belovesport.com https://whatsapp.com/channel/0029Vb8p9hXISTkU2omup82S\n\n`+
     `_Pesan ini dikirim otomatis oleh sistem keamanan BELOVESPORT._`;
 
   try {

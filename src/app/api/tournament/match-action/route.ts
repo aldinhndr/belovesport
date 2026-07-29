@@ -1,7 +1,9 @@
 // Path: src/app/api/tournament/match-action/route.ts
 import { NextResponse } from 'next/server';
+import { MatchStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/supabase/requireUser';
+import { createMatchAuditLog } from '@/lib/match-audit';
 
 export async function POST(request: Request) {
     // 🛡️ 1. Pastikan user sudah login
@@ -38,6 +40,14 @@ export async function POST(request: Request) {
             );
         }
 
+        const allowedStatuses: MatchStatus[] = [MatchStatus.SCHEDULED, MatchStatus.PLAYING];
+        if (!allowedStatuses.includes(match.matchStatus)) {
+            const message = match.matchStatus === MatchStatus.COMPLETED
+                ? 'Pertandingan sudah selesai, tidak bisa mengirim laporan lagi.'
+                : 'Laporan sudah dalam proses verifikasi, tidak bisa diubah.';
+            return NextResponse.json({ success: false, message }, { status: 409 });
+        }
+
         // 4. Jika lolos, simpan data dan ubah status menjadi Menunggu Verifikasi
         await prisma.match.update({
             where: { id: matchId },
@@ -46,10 +56,18 @@ export async function POST(request: Request) {
                 awayScoreLeg1,
                 homeScoreLeg2: homeScoreLeg2 ?? null,
                 awayScoreLeg2: awayScoreLeg2 ?? null,
-                screenshotResultUrl: screenshotBase64, // Menyimpan gambar Base64 sebagai bukti (Tipe text di Prisma)
-                matchStatus: 'WAITING_VERIFICATION',
+                screenshotResultUrl: screenshotBase64,
+                matchStatus: MatchStatus.WAITING_VERIFICATION,
                 reportedById: user.id
             }
+        });
+
+        await createMatchAuditLog({
+            matchId,
+            action: 'SCORE_SUBMITTED',
+            actorId: user.id,
+            actorRole: 'participant',
+            details: `Laporan skor dikirim oleh ${user.id} dengan hasil ${homeScoreLeg1}-${awayScoreLeg1}`
         });
 
         return NextResponse.json({ success: true, message: 'Laporan berhasil dikirim. Menunggu verifikasi Admin.' });
