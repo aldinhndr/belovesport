@@ -4,9 +4,8 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
     try {
-        console.log('📡 API FETCH: Menarik data 16 klasemen grup resmi dari database...');
+        console.log('📡 API FETCH: Menarik data 8 klasemen grup resmi dari database...');
 
-        // 🛡️ PERBAIKAN: Gunakan bypass (prisma as any) untuk melompati masalah cache editor TS
         const groupsData = await (prisma as any)['group'].findMany({
             orderBy: {
                 groupName: 'asc'
@@ -23,8 +22,8 @@ export async function GET() {
             }
         });
 
-        // 🛡️ PERBAIKAN: Berikan tipe ': any' eksplisit pada parameter map agar lulus ts(7006)
         const formattedStandings = groupsData.map((g: any) => ({
+            groupId: g.id,
             groupName: g.groupName,
             teams: g.teams.map((t: any) => ({
                 teamId: t.teamId,

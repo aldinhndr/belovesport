@@ -1,41 +1,55 @@
 // Path: src/app/api/auth/forgot-password/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { createOtp } from '@/lib/otp';
-import { sendOtpEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
-
-    if (!email) {
-      return NextResponse.json({ success: false, message: 'Email wajib diisi.' }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json(
+        { success: false, message: 'Payload data tidak valid.' },
+        { status: 400 }
+      );
     }
 
-    // 1. Cek apakah email peserta terdaftar
-    const participant = await prisma.participant.findUnique({ where: { email } });
+    const { email } = body;
+
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'Email wajib diisi.' },
+        { status: 400 }
+      );
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Cek keberadaan email di database
+    const participant = await prisma.participant.findUnique({
+      where: { email: cleanEmail },
+      select: { id: true, email: true },
+    });
+
     if (!participant) {
-      // Demi keamanan (Cegah User Enumeration), kita tetap kembalikan status 200 seolah sukses
-      // agar hacker tidak tahu email mana saja yang terdaftar.
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Jika email terdaftar, kode reset password telah dikirim.' 
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Email ini tidak terdaftar di sistem Belovesport.',
+        },
+        { status: 404 }
+      );
     }
-
-    // 2. Buat OTP khusus untuk PASSWORD_RESET
-    const code = await createOtp(email, 'PASSWORD_RESET');
-
-    // 3. Kirim email OTP via Resend
-    await sendOtpEmail(email, code, 'PASSWORD_RESET');
 
     return NextResponse.json({
       success: true,
-      message: 'Kode reset password telah dikirim ke email kamu.',
-    });
+      message: 'Email terdaftar! Silakan masukkan password baru kamu.',
+      data: { email: participant.email },
+    }, { status: 200 });
+
   } catch (error) {
-    console.error('Forgot Password API Error:', error);
-    return NextResponse.json({ success: false, message: 'Terjadi kesalahan server.' }, { status: 500 });
+    console.error('Forgot Password Check API Error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Terjadi kesalahan sistem internal.' },
+      { status: 500 }
+    );
   }
 }

@@ -1,21 +1,21 @@
 // Path: src/app/api/tournament/bracket/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getParticipantSession } from '@/lib/participant-auth'; // 🛡️ MENGGUNAKAN AUTH LOKAL KOKO
+import { getParticipantSession } from '@/lib/participant-auth';
 
 export async function GET() {
-  // 🛡️ PROTEKSI LAPIS KEDUA: Guard API Lokal
+  // 🛡️ Proteksi Sesi Participant
   const session = await getParticipantSession();
   if (!session) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    // 1. Tarik seluruh pertandingan fase Knockout dari database secara riil
+    // 1. Tarik seluruh pertandingan fase Knockout dari database
     const dbMatches = await prisma.match.findMany({
       where: {
         stage: {
-          not: 'GROUP' // Filter hanya untuk merender bagan babak gugur (Knockout)
+          not: 'GROUP'
         }
       },
       include: {
@@ -23,76 +23,81 @@ export async function GET() {
         awayTeam: true
       },
       orderBy: {
-        matchNumber: 'asc' // Diurutkan berdasarkan nomor pertandingan agar struktur urutannya konsisten
+        matchNumber: 'asc'
       }
     });
 
-    // 2. Transformasikan data database Prisma ke struktur node-edge @g-loot
+    // 2. Map ke format komponen Bracket Node Visualizer
     const formattedMatches = dbMatches.map((match: any) => {
       
-      const hL1 = match.homeScoreLeg1 ?? 0; //[cite: 5]
-      const aL1 = match.awayScoreLeg1 ?? 0; //[cite: 5]
-      const hL2 = match.homeScoreLeg2 ?? 0; //[cite: 5]
-      const aL2 = match.awayScoreLeg2 ?? 0; //[cite: 5]
+      const hL1 = match.homeScoreLeg1 ?? 0;
+      const aL1 = match.awayScoreLeg1 ?? 0;
+      const hL2 = match.homeScoreLeg2 ?? 0;
+      const aL2 = match.awayScoreLeg2 ?? 0;
 
-      // Hitung akumulasi Agregat otomatis[cite: 5]
-      const totalHome = hL1 + hL2; //[cite: 5]
-      const totalAway = aL1 + aL2; //[cite: 5]
+      const totalHome = hL1 + hL2;
+      const totalAway = aL1 + aL2;
 
-      const isCompleted = match.matchStatus === 'COMPLETED'; //[cite: 5]
+      const isCompleted = match.matchStatus === 'COMPLETED';
+      const isFinal = match.stage === 'FINAL';
 
-      // Format string skor untuk ditampilkan di box bagan[cite: 5]
-      let homeDisplayScore = match.homeScoreLeg1 !== null && match.homeScoreLeg1 !== undefined ? String(match.homeScoreLeg1) : undefined; //[cite: 5]
-      let awayDisplayScore = match.awayScoreLeg1 !== null && match.awayScoreLeg1 !== undefined ? String(match.awayScoreLeg1) : undefined; //[cite: 5]
+      // Tampilan skor: Jika Grand Final (1 Leg Murni), tampilkan skor murni Leg 1
+      let homeDisplayScore: string | undefined = undefined;
+      let awayDisplayScore: string | undefined = undefined;
 
-      // Jika ada Leg 2, tampilkan akumulasi total agregatnya[cite: 5]
-      if (match.homeScoreLeg2 !== null && match.awayScoreLeg2 !== null && match.homeScoreLeg2 !== undefined) {
-        homeDisplayScore = `${totalHome} (${hL1}-${hL2})`; //[cite: 5]
-        awayDisplayScore = `${totalAway} (${aL1}-${aL2})`; //[cite: 5]
+      if (match.homeScoreLeg1 !== null && match.homeScoreLeg1 !== undefined) {
+        if (isFinal) {
+          homeDisplayScore = String(hL1);
+          awayDisplayScore = String(aL1);
+        } else if (match.homeScoreLeg2 !== null && match.homeScoreLeg2 !== undefined) {
+          homeDisplayScore = `${totalHome} (${hL1}-${hL2})`;
+          awayDisplayScore = `${totalAway} (${aL1}-${aL2})`;
+        } else {
+          homeDisplayScore = String(hL1);
+          awayDisplayScore = String(aL1);
+        }
       }
 
-      // Menentukan teks ronde berdasarkan status stage
+      // Penomoran Ronde untuk 32-Tim (Dimulai dari Round of 16 / KNOCKOUT_16)
       const stageLabels: Record<string, string> = {
-        KNOCKOUT_32: '1',
-        KNOCKOUT_16: '2',
-        QUARTER_FINAL: '3',
-        SEMI_FINAL: '4',
-        FINAL: '5',
-        THIRD_PLACE: '5'
+        KNOCKOUT_16: '1',   // Babak 16 Besar (16 Tim -> 8 Match)
+        QUARTER_FINAL: '2', // Perempat Final (8 Tim -> 4 Match)
+        SEMI_FINAL: '3',    // Semi Final (4 Tim -> 2 Match)
+        FINAL: '4',         // Grand Final (2 Tim -> 1 Match Murni)
       };
 
       return {
-        id: match.id, //[cite: 5]
-        name: match.stage === 'FINAL' ? 'Grand Final' : `Babak ${match.stage.replace('KNOCKOUT_', '')}`, //[cite: 5]
-        nextMatchId: match.nextMatchId || null, //[cite: 5]
-        tournamentRoundText: stageLabels[match.stage] || '1', // Konversi string stage ke nomor urut ronde untuk engine @g-loot
-        startTime: match.matchStatus === 'COMPLETED' ? 'Selesai' : match.matchStatus === 'WAITING_VERIFICATION' ? 'VERIFIKASI' : 'LIVE / SCHEDULED', //[cite: 5]
-        state: match.matchStatus === 'COMPLETED' ? 'DONE' : 'SCHEDULED', //[cite: 5]
+        id: match.id,
+        name: isFinal ? 'Grand Final (1 Leg)' : `Babak ${match.stage.replace('KNOCKOUT_', '')}`,
+        nextMatchId: (match as any).nextMatchId || null,
+        tournamentRoundText: stageLabels[match.stage] || '1',
+        startTime: match.matchStatus === 'COMPLETED' ? 'Selesai' : match.matchStatus === 'WAITING_VERIFICATION' ? 'VERIFIKASI' : 'SCHEDULED',
+        state: match.matchStatus === 'COMPLETED' ? 'DONE' : 'SCHEDULED',
         participants: [
           {
-            id: match.homeTeamId ?? `placeholder-home-${match.id}`, //[cite: 5]
-            name: match.homeTeam?.teamName ?? 'To Be Decided', //[cite: 5]
-            resultText: homeDisplayScore, //[cite: 5]
-            isWinner: isCompleted && match.winnerId === match.homeTeamId, //[cite: 5]
-            status: isCompleted ? 'PLAYED' : null //[cite: 5]
+            id: match.homeTeamId ?? `placeholder-home-${match.id}`,
+            name: match.homeTeam?.teamName ?? 'TBD',
+            resultText: homeDisplayScore,
+            isWinner: isCompleted && match.winnerId === match.homeTeamId,
+            status: isCompleted ? 'PLAYED' : null
           },
           {
-            id: match.awayTeamId ?? `placeholder-away-${match.id}`, //[cite: 5]
-            name: match.awayTeam?.teamName ?? 'To Be Decided', //[cite: 5]
-            resultText: awayDisplayScore, //[cite: 5]
-            isWinner: isCompleted && match.winnerId === match.awayTeamId, //[cite: 5]
-            status: isCompleted ? 'PLAYED' : null //[cite: 5]
+            id: match.awayTeamId ?? `placeholder-away-${match.id}`,
+            name: match.awayTeam?.teamName ?? 'TBD',
+            resultText: awayDisplayScore,
+            isWinner: isCompleted && match.winnerId === match.awayTeamId,
+            status: isCompleted ? 'PLAYED' : null
           }
         ]
       };
     });
 
-    return NextResponse.json({ success: true, data: formattedMatches }, { status: 200 }); //[cite: 5]
+    return NextResponse.json({ success: true, data: formattedMatches }, { status: 200 });
 
   } catch (error) {
-    console.error('Prisma Bracket Sync Error:', error); //[cite: 5]
+    console.error('Bracket Sync Error:', error);
     return NextResponse.json(
-      { success: false, message: 'Gagal menyelaraskan data sirkuit dari database.' }, //[cite: 5]
+      { success: false, message: 'Gagal menyelaraskan data bagan sirkuit dari database.' },
       { status: 500 }
     );
   }

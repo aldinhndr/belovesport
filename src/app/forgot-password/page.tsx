@@ -4,61 +4,44 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, Mail, Lock, ShieldAlert, ArrowRight, KeyRound } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert, ArrowRight } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
     const router = useRouter();
-    const [step, setStep] = useState<1 | 2>(1);
     const [email, setEmail] = useState('');
-    const [code, setCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [info, setInfo] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // STEP 1: Minta OTP[cite: 4]
-    const handleRequestOtp = async (e: FormEvent) => {
-        e.preventDefault();
-        setError(null);
-        setIsLoading(true);
-        try {
-            const res = await fetch('/api/auth/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
-            const data = await res.json();
-            if (!res.ok || !data.success) {
-                setError(data.message ?? 'Gagal memproses permintaan.');
-                return;
-            }
-            setInfo('Kode reset telah dikirim ke email kamu.');
-            setStep(2); // Pindah ke form input password baru[cite: 4]
-        } catch {
-            setError('Tidak dapat terhubung ke server.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // STEP 2: Eksekusi Reset Password[cite: 4]
+    // EKSEKUSI DIRECT RESET PASSWORD (Tanpa OTP)
     const handleResetPassword = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
+        setInfo(null);
         setIsLoading(true);
+
         try {
             const res = await fetch('/api/auth/reset-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword }),
+                body: JSON.stringify({ email, newPassword }),
             });
+
             const data = await res.json();
+
             if (!res.ok || !data.success) {
                 setError(data.message ?? 'Gagal memperbarui password.');
                 return;
             }
-            alert('Password berhasil diganti! Mengalihkan ke halaman login...');
-            router.push('/login');
+
+            setInfo('Password berhasil diperbarui! Mengalihkan ke halaman login...');
+
+            // Beri jeda 1.5 detik agar pengguna sempat membaca pesan sukses
+            setTimeout(() => {
+                router.push('/login');
+            }, 1500);
+
         } catch {
             setError('Tidak dapat terhubung ke server.');
         } finally {
@@ -82,9 +65,7 @@ export default function ForgotPasswordPage() {
                         Reset <span className="text-brand-gold">Password</span>
                     </h1>
                     <p className="text-zinc-400 text-sm mt-2 font-sans">
-                        {step === 1
-                            ? 'Masukkan email akun Belovesport Anda untuk pemulihan.'
-                            : `Masukkan kode OTP dan sandi baru untuk ${email}`}
+                        Masukkan email terdaftar dan kata sandi baru Anda.
                     </p>
                 </div>
 
@@ -105,73 +86,54 @@ export default function ForgotPasswordPage() {
                         </div>
                     )}
 
-                    {step === 1 ? (
-                        /* FORM STEP 1: INPUT EMAIL */
-                        <form onSubmit={handleRequestOtp} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold tracking-wider uppercase text-zinc-300 font-jetbrains flex items-center gap-2">
-                                    <Mail size={14} className="text-brand-gold" /> Email Terdaftar
-                                </label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    placeholder="email@domain.com"
-                                    className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-xl px-4 py-3.5 text-sm text-brand-white focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all"
-                                />
-                            </div>
+                    {/* FORM DIRECT RESET */}
+                    <form onSubmit={handleResetPassword} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
+                        {/* Input Email */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold tracking-wider uppercase text-zinc-300 font-jetbrains flex items-center gap-2">
+                                <Mail size={14} className="text-brand-gold" /> Email Terdaftar
+                            </label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                placeholder="email@domain.com"
+                                className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-xl px-4 py-3.5 text-sm text-brand-white focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all"
+                            />
+                        </div>
 
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full bg-brand-gold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-brand-bg-dark font-black tracking-wide rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-gold/20 mt-2"
-                            >
-                                {isLoading ? <Loader2 size={18} className="animate-spin" /> : <>KIRIM KODE OTP <ArrowRight size={18} /></>}
-                            </button>
-                        </form>
-                    ) : (
-                        /* FORM STEP 2: INPUT OTP & PASSWORD BARU */
-                        <form onSubmit={handleResetPassword} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold tracking-wider uppercase text-zinc-300 font-jetbrains flex items-center gap-2">
-                                    <KeyRound size={14} className="text-brand-gold" /> Kode OTP (6 Digit)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={code}
-                                    onChange={(e) => setCode(e.target.value)}
-                                    required
-                                    maxLength={6}
-                                    placeholder="•• •• ••"
-                                    className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-xl px-4 py-3.5 text-xl text-center tracking-[0.5em] font-black text-brand-gold focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all uppercase"
-                                />
-                            </div>
+                        {/* Input Password Baru */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold tracking-wider uppercase text-zinc-300 font-jetbrains flex items-center gap-2">
+                                <Lock size={14} className="text-brand-gold" /> Password Baru
+                            </label>
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                minLength={8}
+                                placeholder="Minimal 8 karakter"
+                                className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-xl px-4 py-3.5 text-sm text-brand-white focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all"
+                            />
+                        </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold tracking-wider uppercase text-zinc-300 font-jetbrains flex items-center gap-2">
-                                    <Lock size={14} className="text-brand-gold" /> Password Baru
-                                </label>
-                                <input
-                                    type="password"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    required
-                                    minLength={8}
-                                    placeholder="Minimal 8 karakter"
-                                    className="w-full bg-brand-bg-dark border border-brand-secondary/60 rounded-xl px-4 py-3.5 text-sm text-brand-white focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full bg-brand-gold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-brand-bg-dark font-black tracking-wide rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-gold/20 mt-2"
-                            >
-                                {isLoading ? <Loader2 size={18} className="animate-spin" /> : <>GANTI PASSWORD <ArrowRight size={18} /></>}
-                            </button>
-                        </form>
-                    )}
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-brand-gold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-brand-bg-dark font-black tracking-wide rounded-xl py-3.5 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-gold/20 mt-2 cursor-pointer"
+                        >
+                            {isLoading ? (
+                                <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                                <>
+                                    SIMPAN PASSWORD BARU <ArrowRight size={18} />
+                                </>
+                            )}
+                        </button>
+                    </form>
                 </div>
 
                 {/* Footer Link */}

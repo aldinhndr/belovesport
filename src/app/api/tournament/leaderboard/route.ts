@@ -3,18 +3,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getParticipantSession } from '@/lib/participant-auth';
 
-// 🛡️ Interface khusus untuk menjamin konsistensi tipe data di level compiler
 interface LeaderboardRow {
     id: string;
     teamName: string;
+    grup: string;
     main: number;
     menang: number;
     seri: number;
     kalah: number;
-    gf: number;
-    ga: number;
+    gm: number;
+    gk: number;
     gd: number;
     poin: number;
+    logoUrl: string | null;
 }
 
 export async function GET() {
@@ -30,47 +31,50 @@ export async function GET() {
             where: {
                 stage: 'GROUP',
                 matchStatus: 'COMPLETED'
-            },
+            }
+        });
+
+        // 3. Tarik data klasemen resmi dari tabel GroupTeam
+        const groupTeams = await (prisma as any)['groupTeam'].findMany({
             include: {
-                homeTeam: true,
-                awayTeam: true
+                group: {
+                    select: { groupName: true }
+                },
+                registration: {
+                    select: { profilePictureUrl: true }
+                }
             }
         });
 
-        // 3. FIX ERROR: Tarik dari tabel 'registration' yang statusnya APPROVED (Tim Aktif Turnamen)
-        const activeTeams = await prisma.registration.findMany({
-            where: {
-                status: 'APPROVED'
-            }
-        });
-
-        // 4. Map & Kalkulasi Statistik secara Real-time dengan Tipe Data Eksplisit
-        const leaderboardData: LeaderboardRow[] = activeTeams.map((team: any) => {
+        // 4. Kalkulasi ulang / petakan statistik secara presisi
+        const leaderboardData: LeaderboardRow[] = groupTeams.map((gt: any) => {
+            const teamId = gt.teamId;
             let main = 0;
             let menang = 0;
             let seri = 0;
             let kalah = 0;
-            let gf = 0;
-            let ga = 0;
+            let gm = 0;
+            let gk = 0;
 
             completedMatches.forEach((match: any) => {
-                const isHome = match.homeTeamId === team.id;
-                const isAway = match.awayTeamId === team.id;
+                const isHome = match.homeTeamId === teamId;
+                const isAway = match.awayTeamId === teamId;
 
                 if (isHome || isAway) {
                     main++;
-                    const hScore = match.homeScoreLeg1 ?? 0;
-                    const aScore = match.awayScoreLeg1 ?? 0;
+                    // Hitung total skor agregat (Leg 1 + Leg 2)
+                    const hScore = (match.homeScoreLeg1 ?? 0) + (match.homeScoreLeg2 ?? 0);
+                    const aScore = (match.awayScoreLeg1 ?? 0) + (match.awayScoreLeg2 ?? 0);
 
                     if (isHome) {
-                        gf += hScore;
-                        ga += aScore;
+                        gm += hScore;
+                        gk += aScore;
                         if (hScore > aScore) menang++;
                         else if (hScore === aScore) seri++;
                         else kalah++;
                     } else {
-                        gf += aScore;
-                        ga += hScore;
+                        gm += aScore;
+                        gk += hScore;
                         if (aScore > hScore) menang++;
                         else if (aScore === hScore) seri++;
                         else kalah++;
@@ -78,28 +82,30 @@ export async function GET() {
                 }
             });
 
-            const gd = gf - ga;
+            const gd = gm - gk;
             const poin = (menang * 3) + (seri * 1);
 
             return {
-                id: team.id,
-                teamName: team.teamName,
+                id: teamId,
+                teamName: gt.teamName,
+                grup: gt.group?.groupName || 'A',
                 main,
                 menang,
                 seri,
                 kalah,
-                gf,
-                ga,
+                gm,
+                gk,
                 gd,
-                poin
+                poin,
+                logoUrl: gt.registration?.profilePictureUrl || null
             };
         });
 
-        // 5. FIX ERROR 7006: Berikan Tipe Data Eksplisit pada Parameter Fungsi Sort
+        // 5. Urutkan berdasarkan Poin -> Selisih Gol (GD) -> Gol Memasukkan (GM)
         leaderboardData.sort((a: LeaderboardRow, b: LeaderboardRow) => {
             if (b.poin !== a.poin) return b.poin - a.poin;
             if (b.gd !== a.gd) return b.gd - a.gd;
-            return b.gf - a.gf;
+            return b.gm - a.gm;
         });
 
         return NextResponse.json({ success: true, data: leaderboardData }, { status: 200 });

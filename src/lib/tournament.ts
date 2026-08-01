@@ -7,11 +7,12 @@ export interface MatchStatsResult {
     isWin: boolean;
     isDraw: boolean;
     isLoss: boolean;
+    winnerId: string | null;
 }
 
 /**
- * Fungsi tunggal terpusat untuk menghitung skor agregat dan status hasil laga
- * sirkuit BELOVEsPORT berdasarkan perspektif Tim Koko (apakah sebagai Home atau Away)
+ * Fungsi terpusat untuk menghitung agregat skor Leg 1 + Leg 2
+ * serta mengevaluasi pemenang pertandingan.
  */
 export function calculateMatchResult(match: any, teamIds: string[]): MatchStatsResult {
     const isCompleted = match.matchStatus === 'COMPLETED';
@@ -22,9 +23,17 @@ export function calculateMatchResult(match: any, teamIds: string[]): MatchStatsR
     
     const isHome = teamIds.includes(match.homeTeamId || '');
     
-    // Tentukan skor tim kita vs skor musuh
     const myScore = isHome ? homeTotal : awayTotal;
     const enemyScore = isHome ? awayTotal : homeTotal;
+
+    let winnerId: string | null = null;
+    if (isCompleted) {
+        if (homeTotal > awayTotal) {
+            winnerId = match.homeTeamId;
+        } else if (awayTotal > homeTotal) {
+            winnerId = match.awayTeamId;
+        }
+    }
 
     return {
         homeTotal,
@@ -32,6 +41,7 @@ export function calculateMatchResult(match: any, teamIds: string[]): MatchStatsR
         isCompleted,
         isWin: isCompleted && myScore > enemyScore,
         isDraw: isCompleted && myScore === enemyScore,
-        isLoss: isCompleted && myScore < enemyScore
+        isLoss: isCompleted && myScore < enemyScore,
+        winnerId
     };
 }

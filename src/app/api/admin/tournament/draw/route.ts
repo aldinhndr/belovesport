@@ -5,7 +5,7 @@ import { RegistrationStatus, MatchStage, MatchStatus } from '@prisma/client';
 
 export async function POST() {
     try {
-        console.log('🏁 ENGINE BACKEND: Memulai pembuatan Jadwal & Tabel Klasemen Grup Resmi...');
+        console.log('🏁 ENGINE BACKEND: Memulai Pengundian 8 Grup Resmi (32 Tim)...');
 
         // 1. Ambil semua tim yang APPROVED
         const approvedTeams = await prisma.registration.findMany({
@@ -13,10 +13,11 @@ export async function POST() {
             select: { id: true, teamName: true }
         });
 
-        if (approvedTeams.length < 4) {
+        // Validasi minimal tim
+        if (approvedTeams.length < 8) {
             return NextResponse.json({ 
                 success: false, 
-                message: `Gagal! Jumlah tim APPROVED tidak mencukupi untuk membuat grup (${approvedTeams.length} tim).` 
+                message: `Gagal! Jumlah tim APPROVED minimal harus 8 tim untuk memulainya. (Saat ini: ${approvedTeams.length} tim).` 
             }, { status: 400 });
         }
 
@@ -27,27 +28,29 @@ export async function POST() {
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
-        const groupNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+        // 🎯 Tepat 8 Grup (A - H) untuk 32 Tim
+        const groupNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
         
-        // 3. WIPE OUT DATA LAMA
+        // 3. WIPE OUT DATA BRACKET & MATCH LAMA
         await prisma.matchChat.deleteMany();
+        await prisma.matchAuditLog.deleteMany();
         await prisma.match.deleteMany();
         await (prisma as any)['groupTeam'].deleteMany();
         await (prisma as any)['group'].deleteMany();
 
-        // Array penampung untuk bulk insert match di akhir agar performa melesat
         const matchesToCreate: any[] = [];
 
-        // 4. TRANSACTION ENGINE (Ditambahkan Parameter Timeout Keamanan 30 Detik)
+        // 4. TRANSACTION ENGINE
         await prisma.$transaction(async (tx) => {
             
             for (let i = 0; i < groupNames.length; i++) {
                 const currentGroupName = groupNames[i];
+                // Bagikan tim secara merata ke 8 grup
                 const groupTeamsChunk = shuffled.filter((_, idx) => idx % groupNames.length === i);
 
                 if (groupTeamsChunk.length < 2) continue;
 
-                // A. Buat Induk Grup Baru
+                // A. Buat Induk Grup Baru (Grup A - H)
                 const newGroup = await (tx as any)['group'].create({
                     data: { groupName: currentGroupName }
                 });
@@ -56,40 +59,55 @@ export async function POST() {
                 for (const team of groupTeamsChunk) {
                     await (tx as any)['groupTeam'].create({
                         data: {
-                          groupId: newGroup.id,
-                          teamId: team.id,
-                          teamName: team.teamName,
-                          played: 0,
-                          won: 0,
-                          drawn: 0,
-                          lost: 0,
-                          goalsFor: 0,
-                          goalsAgainst: 0,
-                          goalDifference: 0,
-                          points: 0
+                            groupId: newGroup.id,
+                            teamId: team.id,
+                            teamName: team.teamName,
+                            played: 0,
+                            won: 0,
+                            drawn: 0,
+                            lost: 0,
+                            goalsFor: 0,
+                            goalsAgainst: 0,
+                            goalDifference: 0,
+                            points: 0
                         }
                     });
                 }
 
-                // C. Rancang Struktur Jadwal Round-Robin Laga (Kumpulkan di Array Memori)
+                // C. Rancang Laga Round-Robin 2 Leg (Home & Away)
                 let roundCounter = 1;
                 for (let j = 0; j < groupTeamsChunk.length; j++) {
                     for (let k = j + 1; k < groupTeamsChunk.length; k++) {
+                        // Leg 1
                         matchesToCreate.push({
                             stage: MatchStage.GROUP,
                             groupName: currentGroupName,
-                            roundNumber: roundCounter++,
-                            matchNumber: 0, // Di-update berurutan di bawah
+                            roundNumber: roundCounter,
+                            matchNumber: 0,
                             homeTeamId: groupTeamsChunk[j].id,
                             awayTeamId: groupTeamsChunk[k].id,
                             matchStatus: MatchStatus.SCHEDULED,
                             scheduledTime: new Date()
                         });
+
+                        // Leg 2 (Tukar Home & Away)
+                        matchesToCreate.push({
+                            stage: MatchStage.GROUP,
+                            groupName: currentGroupName,
+                            roundNumber: roundCounter + 1,
+                            matchNumber: 0,
+                            homeTeamId: groupTeamsChunk[k].id,
+                            awayTeamId: groupTeamsChunk[j].id,
+                            matchStatus: MatchStatus.SCHEDULED,
+                            scheduledTime: new Date()
+                        });
+
+                        roundCounter += 2;
                     }
                 }
             }
 
-            // D. EKSEKUSI BULK INSERT MATCH: Menyuntikkan seluruh jadwal sekaligus dalam 1 query tunggal!
+            // D. BULK INSERT MATCH
             if (matchesToCreate.length > 0) {
                 await tx.match.createMany({
                     data: matchesToCreate
@@ -97,8 +115,8 @@ export async function POST() {
             }
 
         }, {
-            maxWait: 10000, // Maksimal waktu tunggu alokasi koneksi (10 detik)
-            timeout: 30000  // Menaikkan batas waktu eksekusi transaksi menjadi 30 detik! (Menyelesaikan P2028)
+            maxWait: 10000,
+            timeout: 30000
         });
 
         // 5. AUTO-INCREMENT NOMOR MATCH GLOBAL
@@ -110,13 +128,13 @@ export async function POST() {
                     data: { matchNumber: idx + 1 }
                 })
             ), {
-                timeout: 20000 // Berikan nafas waktu ekstra untuk penataan nomor urut
+                timeout: 20000
             }
         );
 
         return NextResponse.json({ 
             success: true, 
-            message: 'Sirkuit Berhasil Dikunci! 16 Tabel Grup dan Jadwal Pertandingan resmi berstatus LIVE!' 
+            message: `Pengundian Sukses! 8 Grup (A-H) & ${matchesToCreate.length} Jadwal Laga Resmi Dibuat!` 
         });
 
     } catch (error: any) {

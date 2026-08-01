@@ -252,7 +252,7 @@ export default function StandingsPage() {
                             </div>
                             <p className="text-brand-muted text-xs text-center lg:text-left flex items-center justify-center lg:justify-start gap-1.5 font-medium">
                                 <Trophy size={13} className="text-brand-gold shrink-0" />
-                                {isGroupsTab ? '16 Grup • 4 tim per grup • Top 2 Melaju ke Knockout' : isLeaderboardTab ? 'Akumulasi klasifikasi seluruh tim di arena turnamen Belovesport.' : 'Gol Terbanyak Musim Ini.'}
+                                {isGroupsTab ? '8 Grup (A-H) • 4 Tim per Grup • Top 2 Melaju ke Knockout' : isLeaderboardTab ? 'Akumulasi klasifikasi seluruh tim di arena turnamen Belovesport.' : 'Gol Terbanyak Musim Ini.'}
                             </p>
                         </div>
 
